@@ -6,7 +6,8 @@ export default function Dashboard() {
     return (
         <div>
             <h1>Dashboard</h1>
-            <p>Welcome {user?.username}</p>
+            {/* fullName nga backend, username si fallback */}
+            <p>Welcome {user?.fullName || user?.username}</p>
         </div>
     );
 }
