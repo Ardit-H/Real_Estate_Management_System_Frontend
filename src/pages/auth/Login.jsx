@@ -61,22 +61,22 @@ const styles = {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#f3f4f6",
+        background: "#5a5f3a", // 🌿 olive dark background
     },
     card: {
         width: "350px",
         padding: "30px",
-        background: "white",
+        background: "#5a5f3a", // 🌿 olive card
         borderRadius: "12px",
-        boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
         textAlign: "center",
     },
     title: {
         marginBottom: "5px",
-        color: "#2563eb",
+        color: "#ffffff", // 🤍 white
     },
     subtitle: {
-        color: "#666",
+        color: "#e5e7eb",
         marginBottom: "20px",
         fontSize: "14px",
     },
@@ -88,13 +88,15 @@ const styles = {
     input: {
         padding: "10px",
         borderRadius: "8px",
-        border: "1px solid #ddd",
+        border: "1px solid #a3a380",
         outline: "none",
+        background: "#ffffff", // same as card
+        color: "#a3a380", // 🌿 olive text
     },
     button: {
         padding: "10px",
-        background: "#2563eb",
-        color: "white",
+        background: "#a3a380",
+        color: "#1f1f1f",
         border: "none",
         borderRadius: "8px",
         cursor: "pointer",
@@ -103,7 +105,7 @@ const styles = {
     link: {
         marginTop: "10px",
         fontSize: "13px",
-        color: "#2563eb",
+        color: "#ffffff",
         textDecoration: "none",
     },
 };

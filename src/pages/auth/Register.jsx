@@ -86,23 +86,23 @@ const styles = {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#0f172a",
+        background: "#5a5f3a", // 🌿 olive background
     },
     card: {
         width: "450px",
         padding: "30px",
-        background: "#1e293b",
+        background: "#5a5f3a", // 🌿 same as login
         borderRadius: "12px",
-        boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
         color: "white",
         textAlign: "center",
     },
     title: {
-        color: "#60a5fa",
+        color: "#ffffff", // 🤍 white like login
         marginBottom: "5px",
     },
     subtitle: {
-        color: "#94a3b8",
+        color: "#e5e7eb",
         marginBottom: "15px",
         fontSize: "14px",
     },
@@ -114,31 +114,32 @@ const styles = {
     input: {
         padding: "10px",
         borderRadius: "8px",
-        border: "1px solid #334155",
-        background: "#0f172a",
-        color: "white",
+        border: "1px solid #a3a380",
+        background: "#5a5f3a", // same as card
+        color: "#a3a380", // 🌿 olive text
         outline: "none",
     },
     button: {
         marginTop: "10px",
         padding: "10px",
-        background: "#2563eb",
-        color: "white",
+        background: "#a3a380",
+        color: "#1f1f1f",
         border: "none",
         borderRadius: "8px",
         cursor: "pointer",
     },
     error: {
-        color: "red",
+        color: "#ff6b6b",
         fontSize: "13px",
     },
     bottomText: {
         marginTop: "10px",
         fontSize: "13px",
-        color: "#94a3b8",
+        color: "#e5e7eb",
     },
     link: {
-        color: "#60a5fa",
+        color: "#ffffff",
         textDecoration: "none",
+        fontWeight: "bold",
     },
 };
