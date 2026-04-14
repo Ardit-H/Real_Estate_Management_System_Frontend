@@ -1,0 +1,113 @@
+import { useState, useContext } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { AuthContext } from "../../context/AuthProvider";
+
+export default function Login() {
+    const { login } = useContext(AuthContext);
+    const navigate = useNavigate();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleLogin = () => {
+        const user = login(email, password);
+
+        if (!user) {
+            alert("Wrong credentials");
+            return;
+        }
+
+        // redirect based on role
+        if (user.role === "admin") navigate("/admin");
+        else if (user.role === "agent") navigate("/agent");
+        else navigate("/client");
+    };
+
+    return (
+        <div style={styles.container}>
+            <div style={styles.card}>
+                <h2 style={styles.title}>Welcome Back 👋</h2>
+                <p style={styles.subtitle}>Login to your account</p>
+
+                <div style={styles.form}>
+                    <input
+                        style={styles.input}
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+
+                    <input
+                        style={styles.input}
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+
+                    <button style={styles.button} onClick={handleLogin}>
+                        Login
+                    </button>
+
+                    <Link to="/register" style={styles.link}>
+                        No account yet? Register now.
+                    </Link>
+                </div>
+            </div>
+        </div>
+    );
+}
+const styles = {
+    container: {
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#5a5f3a", // 🌿 olive dark background
+    },
+    card: {
+        width: "350px",
+        padding: "30px",
+        background: "#5a5f3a", // 🌿 olive card
+        borderRadius: "12px",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+        textAlign: "center",
+    },
+    title: {
+        marginBottom: "5px",
+        color: "#ffffff", // 🤍 white
+    },
+    subtitle: {
+        color: "#e5e7eb",
+        marginBottom: "20px",
+        fontSize: "14px",
+    },
+    form: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+    },
+    input: {
+        padding: "10px",
+        borderRadius: "8px",
+        border: "1px solid #a3a380",
+        outline: "none",
+        background: "#ffffff", // same as card
+        color: "#a3a380", // 🌿 olive text
+    },
+    button: {
+        padding: "10px",
+        background: "#a3a380",
+        color: "#1f1f1f",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer",
+        marginTop: "10px",
+    },
+    link: {
+        marginTop: "10px",
+        fontSize: "13px",
+        color: "#ffffff",
+        textDecoration: "none",
+    },
+};

@@ -1,22 +1,34 @@
-import { useState } from "react";
-import { AuthContext } from "./AuthContext.jsx";
+import { useState, createContext } from "react";
+import { users as initialUsers } from "../mocks/users";
 
-const USERS = [
-    { id: 1, username: "admin", password: "1234", role: "admin" },
-    { id: 2, username: "user", password: "1234", role: "user" },
-];
+export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export default function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [users, setUsers] = useState(initialUsers);
 
-    const login = (username, password) => {
-        const found = USERS.find(
-            (u) => u.username === username && u.password === password
+    const login = (email, password) => {
+        const user = users.find(
+            (u) => u.email === email && u.password === password
         );
 
-        if (!found) return false;
+        return user || null;
+    };
 
-        setUser(found);
+    // 🆕 REGISTER
+    const register = (username, password, role = "client") => {
+        const exists = users.find((u) => u.username === username);
+
+        if (exists) return false;
+
+        const newUser = {
+            id: users.length + 1,
+            username,
+            password,
+            role,
+        };
+
+        setUsers([...users, newUser]);
         return true;
     };
 
@@ -24,16 +36,9 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
-    const value = {
-        user,
-        isAuthenticated: !!user,
-        login,
-        logout,
-    };
-
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ user, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );
-};
+}
