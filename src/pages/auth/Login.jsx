@@ -1,23 +1,23 @@
 import { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthProvider";
-import { Link } from "react-router-dom";
 
 export default function Login() {
-    const {login} = useContext(AuthContext);
+    const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
     const handleLogin = () => {
-        const user = login(username, password);
+        const user = login(email, password);
 
         if (!user) {
             alert("Wrong credentials");
             return;
         }
 
+        // redirect based on role
         if (user.role === "admin") navigate("/admin");
         else if (user.role === "agent") navigate("/agent");
         else navigate("/client");
@@ -32,14 +32,16 @@ export default function Login() {
                 <div style={styles.form}>
                     <input
                         style={styles.input}
-                        placeholder="Username"
-                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                     />
 
                     <input
                         style={styles.input}
                         type="password"
                         placeholder="Password"
+                        value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
 

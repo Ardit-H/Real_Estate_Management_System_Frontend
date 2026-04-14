@@ -7,15 +7,12 @@ export default function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [users, setUsers] = useState(initialUsers);
 
-    const login = (username, password) => {
-        const found = users.find(
-            (u) => u.username === username && u.password === password
+    const login = (email, password) => {
+        const user = users.find(
+            (u) => u.email === email && u.password === password
         );
 
-        if (!found) return false;
-
-        setUser(found);
-        return found;
+        return user || null;
     };
 
     // 🆕 REGISTER
