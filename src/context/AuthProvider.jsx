@@ -1,39 +1,29 @@
-import { useState } from "react";
-import { AuthContext } from "./AuthContext.jsx";
+import { useState, createContext } from "react";
+import { users } from "../mocks/users";
 
-const USERS = [
-    { id: 1, username: "admin", password: "1234", role: "admin" },
-    { id: 2, username: "user", password: "1234", role: "user" },
-];
+export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export default function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
 
     const login = (username, password) => {
-        const found = USERS.find(
+        const found = users.find(
             (u) => u.username === username && u.password === password
         );
 
         if (!found) return false;
 
         setUser(found);
-        return true;
+        return found;
     };
 
     const logout = () => {
         setUser(null);
     };
 
-    const value = {
-        user,
-        isAuthenticated: !!user,
-        login,
-        logout,
-    };
-
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ user, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
-};
+}
