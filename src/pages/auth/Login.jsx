@@ -1,9 +1,10 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthProvider";
+import { Link } from "react-router-dom";
 
 export default function Login() {
-    const { login } = useContext(AuthContext);
+    const {login} = useContext(AuthContext);
     const navigate = useNavigate();
 
     const [username, setUsername] = useState("");
@@ -23,21 +24,86 @@ export default function Login() {
     };
 
     return (
-        <div>
-            <h2>Login</h2>
+        <div style={styles.container}>
+            <div style={styles.card}>
+                <h2 style={styles.title}>Welcome Back 👋</h2>
+                <p style={styles.subtitle}>Login to your account</p>
 
-            <input
-                placeholder="username"
-                onChange={(e) => setUsername(e.target.value)}
-            />
+                <div style={styles.form}>
+                    <input
+                        style={styles.input}
+                        placeholder="Username"
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
 
-            <input
-                type="password"
-                placeholder="password"
-                onChange={(e) => setPassword(e.target.value)}
-            />
+                    <input
+                        style={styles.input}
+                        type="password"
+                        placeholder="Password"
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
 
-            <button onClick={handleLogin}>Login</button>
+                    <button style={styles.button} onClick={handleLogin}>
+                        Login
+                    </button>
+
+                    <Link to="/register" style={styles.link}>
+                        No account yet? Register now.
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 }
+const styles = {
+    container: {
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#f3f4f6",
+    },
+    card: {
+        width: "350px",
+        padding: "30px",
+        background: "white",
+        borderRadius: "12px",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+        textAlign: "center",
+    },
+    title: {
+        marginBottom: "5px",
+        color: "#2563eb",
+    },
+    subtitle: {
+        color: "#666",
+        marginBottom: "20px",
+        fontSize: "14px",
+    },
+    form: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+    },
+    input: {
+        padding: "10px",
+        borderRadius: "8px",
+        border: "1px solid #ddd",
+        outline: "none",
+    },
+    button: {
+        padding: "10px",
+        background: "#2563eb",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer",
+        marginTop: "10px",
+    },
+    link: {
+        marginTop: "10px",
+        fontSize: "13px",
+        color: "#2563eb",
+        textDecoration: "none",
+    },
+};
