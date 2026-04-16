@@ -6,32 +6,46 @@ export default function Register() {
     const { register } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    const [first_name, setFirstName] = useState("");
-    const [last_name, setLastName] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [companyName, setCompanyName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [role, setRole] = useState("client");
-    const [tenant_id] = useState(1);
 
-    const [error, setError] = useState("");
+    // ── SLUG GENERATOR (OPTION 2) ─────────────────────────────
+    const generateSlug = (name) =>
+        name
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9-]/g, "")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
 
-    const handleRegister = () => {
-        const ok = register({
+    // ── REGISTER HANDLER ──────────────────────────────────────
+    const handleRegister = async () => {
+        const tenantSlug = generateSlug(companyName);
+        const tenantName = companyName;
+
+        const res = await register({
             email,
             password,
-            role,
-            first_name,
-            last_name,
-            tenant_id
+            firstName,
+            lastName,
+            role, // admin / agent / client
+            tenantSlug,
+            tenantName,
         });
 
-        if (!ok) {
-            setError("User already exists");
+        if (!res) {
+            alert("Register failed");
             return;
         }
 
         alert("Registered successfully!");
 
+        // redirect based on role
         if (role === "admin") navigate("/admin");
         else if (role === "agent") navigate("/agent");
         else navigate("/client");
@@ -41,26 +55,36 @@ export default function Register() {
         <div style={styles.container}>
             <div style={styles.card}>
                 <h2 style={styles.title}>Create Account ✨</h2>
-                <p style={styles.subtitle}>Fill your details to register</p>
+                <p style={styles.subtitle}>
+                    Register your company and account
+                </p>
 
                 <div style={styles.form}>
+                    <input
+                        style={styles.input}
+                        placeholder="Company Name"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                    />
 
                     <input
                         style={styles.input}
                         placeholder="First Name"
+                        value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                     />
 
                     <input
                         style={styles.input}
                         placeholder="Last Name"
+                        value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                     />
 
                     <input
                         style={styles.input}
-                        type="email"
                         placeholder="Email"
+                        value={email}
                         onChange={(e) => setEmail(e.target.value)}
                     />
 
@@ -68,11 +92,13 @@ export default function Register() {
                         style={styles.input}
                         type="password"
                         placeholder="Password"
+                        value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
 
                     <select
                         style={styles.input}
+                        value={role}
                         onChange={(e) => setRole(e.target.value)}
                     >
                         <option value="client">Client</option>
@@ -84,20 +110,19 @@ export default function Register() {
                         Register
                     </button>
 
-                    {error && <p style={styles.error}>{error}</p>}
-
                     <p style={styles.bottomText}>
                         Already have an account?{" "}
                         <Link to="/" style={styles.link}>
                             Login
                         </Link>
                     </p>
-
                 </div>
             </div>
         </div>
     );
 }
+
+// ── STYLES ────────────────────────────────────────────────
 const styles = {
     container: {
         height: "100vh",
@@ -133,8 +158,8 @@ const styles = {
         padding: "10px",
         borderRadius: "8px",
         border: "1px solid #a3a380",
-        background: "#5a5f3a",
-        color: "#ffffff",
+        background: "#ffffff",
+        color: "#5a5f3a",
         outline: "none",
     },
     button: {
@@ -145,10 +170,6 @@ const styles = {
         border: "none",
         borderRadius: "8px",
         cursor: "pointer",
-    },
-    error: {
-        color: "#ff6b6b",
-        fontSize: "13px",
     },
     bottomText: {
         marginTop: "10px",

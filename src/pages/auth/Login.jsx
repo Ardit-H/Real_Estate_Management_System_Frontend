@@ -8,16 +8,19 @@ export default function Login() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
 
-    const handleLogin = () => {
-        const user = login(email, password);
+    const handleLogin = async () => {
+        setError("");
+
+        const user = await login(email, password);
 
         if (!user) {
-            alert("Wrong credentials");
-            return;
+            setError("Invalid email or password");
+            return; // 🚫 stay on same page
         }
 
-        // redirect based on role
+        // redirect only on success
         if (user.role === "admin") navigate("/admin");
         else if (user.role === "agent") navigate("/agent");
         else navigate("/client");
@@ -49,6 +52,9 @@ export default function Login() {
                         Login
                     </button>
 
+                    {/* ERROR MESSAGE UI */}
+                    {error && <div style={styles.error}>{error}</div>}
+
                     <Link to="/register" style={styles.link}>
                         No account yet? Register now.
                     </Link>
@@ -57,25 +63,26 @@ export default function Login() {
         </div>
     );
 }
+
 const styles = {
     container: {
         height: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#5a5f3a", // 🌿 olive dark background
+        background: "#5a5f3a",
     },
     card: {
         width: "350px",
         padding: "30px",
-        background: "#5a5f3a", // 🌿 olive card
+        background: "#5a5f3a",
         borderRadius: "12px",
         boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
         textAlign: "center",
     },
     title: {
         marginBottom: "5px",
-        color: "#ffffff", // 🤍 white
+        color: "#ffffff",
     },
     subtitle: {
         color: "#e5e7eb",
@@ -92,8 +99,8 @@ const styles = {
         borderRadius: "8px",
         border: "1px solid #a3a380",
         outline: "none",
-        background: "#ffffff", // same as card
-        color: "#a3a380", // 🌿 olive text
+        background: "#ffffff",
+        color: "#5a5f3a",
     },
     button: {
         padding: "10px",
@@ -103,6 +110,11 @@ const styles = {
         borderRadius: "8px",
         cursor: "pointer",
         marginTop: "10px",
+    },
+    error: {
+        color: "#ff6b6b",
+        fontSize: "13px",
+        marginTop: "8px",
     },
     link: {
         marginTop: "10px",
