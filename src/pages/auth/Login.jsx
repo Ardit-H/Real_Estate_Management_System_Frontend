@@ -23,7 +23,7 @@ export default function Login() {
         // redirect only on success
         if (user.role === "admin") navigate("/admin");
         else if (user.role === "agent") navigate("/agent");
-        else navigate("/client");
+        else navigate("/properties");
     };
 
     return (
