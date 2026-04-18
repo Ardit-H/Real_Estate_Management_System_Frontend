@@ -6,6 +6,7 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import AgentDashboard from "../pages/agent/AgentDashboard";
 import ClientDashboard from "../pages/client/ClientDashboard";
 import PropertiesList from "../pages/shared/PropertiesList";
+import AdminProperties from "../pages/admin/AllProperties";
 
 
 
@@ -21,6 +22,7 @@ export default function AppRoutes() {
 
     {/* ROLE DASHBOARDS */}
     <Route path="/admin" element={<AdminDashboard />} />
+    <Route path="/admin/allproperties" element={<AdminProperties/>} />
     
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />

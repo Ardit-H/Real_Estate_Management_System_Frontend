@@ -14,7 +14,7 @@ const NAV_CONFIG = {
     {
       group: "Properties",
       items: [
-        { to: "/admin/properties", label: "All Properties", icon: "home" },
+        { to: "/admin/AllProperties", label: "All Properties", icon: "home" },
         { to: "/admin/sales", label: "Sales", icon: "tag" },
         { to: "/admin/rentals", label: "Rentals", icon: "key" },
       ],
