@@ -6,7 +6,7 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import AgentDashboard from "../pages/agent/AgentDashboard";
 import ClientDashboard from "../pages/client/ClientDashboard";
 import PropertiesList from "../pages/shared/PropertiesList";
-
+import AgentSales from "../pages/agent/AgentSales";
 
 
 export default function AppRoutes() {
@@ -24,6 +24,7 @@ export default function AppRoutes() {
     
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />
+    <Route path="/agent/sales" element={<AgentSales />} />
 </Routes>
     );
 }
