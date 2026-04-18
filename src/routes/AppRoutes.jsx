@@ -9,6 +9,7 @@ import PropertiesList from "../pages/shared/PropertiesList";
 import AgentProperties from "../pages/agent/Properties";
 import AgentPropeties from "../pages/agent/Properties";
 
+import AgentSales from "../pages/agent/AgentSales";
 
 
 export default function AppRoutes() {
@@ -29,6 +30,7 @@ export default function AppRoutes() {
 
     {/* PUBLIC / AGENT */}
      <Route path="/agent/properties" element={<AgentPropeties />} />
+    <Route path="/agent/sales" element={<AgentSales />} />
 </Routes>
     );
 }
