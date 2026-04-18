@@ -1,4 +1,4 @@
-import MainLayout from "../../components/layout/MainLayout";
+import MainLayout from "../../components/layout/Layout";
  
 const myStats = [
   { label: "My Listings", value: "23", delta: "+3", up: true, color: "#eef2ff", iconColor: "#6366f1" },

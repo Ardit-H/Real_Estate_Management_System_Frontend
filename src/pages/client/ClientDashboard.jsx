@@ -1,4 +1,4 @@
-import MainLayout from "../../components/layout/MainLayout";
+import MainLayout from "../../components/layout/Layout";
  
 const clientStats = [
   { label: "Saved Properties", value: "12", color: "#fdf4ff", iconColor: "#a855f7" },
