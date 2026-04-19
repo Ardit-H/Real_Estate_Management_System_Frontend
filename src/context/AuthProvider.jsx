@@ -79,23 +79,26 @@ export default function AuthProvider({ children }) {
         }
     };
 
-    // ───────── LOGOUT ─────────
+// ───────── LOGOUT ─────────
     const logout = async () => {
-        try {
-            const refreshToken = localStorage.getItem("refresh_token");
+    try {
+        const refreshToken = localStorage.getItem("refresh_token");
 
-            if (refreshToken) {
-                await api.post("/api/auth/logout", {
-                    refreshToken,
-                });
-            }
-        } catch (_) {}
+        if (refreshToken) {
+            await api.post("/api/auth/logout", { refreshToken });
+        }
+    } catch (_) {}
 
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user_info");
-        setUser(null);
-    };
+    // CLEAN STATE
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user_info");
+
+    setUser(null);
+
+    // force redirect (shmang blank state)
+    window.location.href = "/";
+};
 
     // ───────── REFRESH TOKEN ─────────
     const refreshToken = async () => {
