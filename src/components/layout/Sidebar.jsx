@@ -91,7 +91,7 @@ const NAV_CONFIG = {
       group: "Explore",
       items: [
         { to: "/client/dashboard", label: "Home", icon: "grid" },
-        { to: "/client/properties", label: "Browse Properties", icon: "search" },
+        { to: "/client/browseproperties", label: "Browse Properties", icon: "search" },
         { to: "/client/saved", label: "Saved Properties", icon: "heart" },
       ],
     },
