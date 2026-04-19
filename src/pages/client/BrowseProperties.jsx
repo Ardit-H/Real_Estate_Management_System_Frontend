@@ -58,6 +58,7 @@ const ListIcon = () => (
 );
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 const PROPERTY_TYPES = ["APARTMENT", "HOUSE", "VILLA", "COMMERCIAL", "LAND", "OFFICE"];
 const LISTING_TYPES  = ["SALE", "RENT", "BOTH"];
 const PAGE_SIZE      = 12;
@@ -105,8 +106,18 @@ const gridStyle = (mode) => ({
 // ─── Property Card ─────────────────────────────────────────────────────────────
 function PropertyCard({ property, viewMode }) {
   const badge  = listingBadge(property.listing_type);
-  const img    = property.primary_image || PLACEHOLDER;
+  const imageSrc =
+  property.primaryImage ||
+  property.primary_image ||
+  property.imageUrl;
+
+const img = imageSrc
+  ? (imageSrc.startsWith("http")
+      ? imageSrc
+      : BASE_URL + imageSrc)
+  : PLACEHOLDER;
   const isGrid = viewMode === "grid";
+  console.log("PROPERTY:", property);
 
   return (
     <div
@@ -380,7 +391,7 @@ export default function BrowseProperties() {
     setLoading(true);
     setError(null);
     try {
-      const params = { page: pg, size: PAGE_SIZE, sort: "createdAt,desc", status: "AVAILABLE" };
+      const params = { page: pg, size: PAGE_SIZE };;
 
       if (f.minPrice)     params.minPrice     = f.minPrice;
 if (f.maxPrice)     params.maxPrice     = f.maxPrice;
