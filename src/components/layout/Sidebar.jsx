@@ -49,7 +49,7 @@ const NAV_CONFIG = {
     {
       group: "Overview",
       items: [
-        { to: "/agent/dashboard", label: "Dashboard", icon: "grid" },
+        { to: "/agent", label: "Dashboard", icon: "grid" },
         { to: "/agent/my-stats", label: "My Performance", icon: "trending-up" },
       ],
     },
