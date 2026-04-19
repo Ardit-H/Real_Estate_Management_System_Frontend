@@ -429,31 +429,80 @@ if (f.isFeatured)   params.isFeatured   = true;
 
   // ── GET /api/properties/search ────────────────────────────────────────────
   const fetchSearch = useCallback(async (keyword, pg = 0) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res  = await api.get("/api/properties/search", {
-        params: { keyword, page: pg, size: PAGE_SIZE, sort: "createdAt,desc" },
-      });
-      const data = res.data;
+  setLoading(true);
+  setError(null);
 
-      setProperties(data.content || []);
-      setTotalPages(data.totalPages    ?? data.total_pages    ?? 0);
-      setTotalElements(data.totalElements ?? data.total_elements ?? 0);
-      setPage(pg);
-    } catch {
-      setError("Could not load properties. Please try again.");
-    } finally {
-      setLoading(false);
+  try {
+    const q = keyword.trim();
+
+    const params = {
+      page: pg,
+      size: PAGE_SIZE,
+      sort: "createdAt,desc",
+      status: "AVAILABLE",
+    };
+
+    // 👇 MATCH TYPE (apartment, house...)
+    if (PROPERTY_TYPES.includes(q.toUpperCase())) {
+      params.type = q.toUpperCase();
     }
-  }, []);
+
+    // 👇 MATCH CITY (Prishtina, Tirana...)
+    params.city = q;
+
+    // 👇 OPTIONAL (nëse backend e suporton)
+    params.title = q;
+
+    const res = await api.get("/api/properties/filter", { params });
+    const data = res.data;
+
+    setProperties(data.content || []);
+    setTotalPages(data.totalPages ?? 0);
+    setTotalElements(data.totalElements ?? 0);
+    setPage(pg);
+
+  } catch (err) {
+    console.log(err);
+    setError("Search failed.");
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => { fetchFiltered(DEFAULT_FILTERS, 0); }, [fetchFiltered]);
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) { setMode("search"); fetchSearch(searchQuery.trim(), 0); }
-    else                    { setMode("filter"); fetchFiltered(filters, 0); }
-  };
+ const handleSearch = () => {
+  const q = searchQuery.trim();
+  const upper = q.toUpperCase();
+
+  if (!q) {
+    setMode("filter");
+    fetchFiltered(filters, 0);
+    return;
+  }
+
+  setMode("search");
+
+  // 🔥 TYPE SEARCH (KJO E RREGULLON PROBLEMIN)
+  if (PROPERTY_TYPES.includes(upper)) {
+    fetchFiltered({ ...filters, type: upper }, 0);
+    return;
+  }
+
+  // 🔥 RENT / SALE
+  if (q.toLowerCase().includes("rent")) {
+    fetchFiltered({ ...filters, listingType: "RENT" }, 0);
+    return;
+  }
+
+  if (q.toLowerCase().includes("sale")) {
+    fetchFiltered({ ...filters, listingType: "SALE" }, 0);
+    return;
+  }
+
+  // 🔥 DEFAULT (city, title, etc.)
+  fetchSearch(q, 0);
+};
 
   const handleApplyFilters = () => {
     setFilters(pendingFilters);
