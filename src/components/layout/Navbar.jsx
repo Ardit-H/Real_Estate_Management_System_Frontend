@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthProvider";
- 
+
+
+
+
+
 const ROLE_META = {
   admin: { label: "Administrator", color: "#6366f1", bg: "#eef2ff" },
   agent: { label: "Agent", color: "#0ea5e9", bg: "#f0f9ff" },
@@ -69,6 +73,7 @@ function useBreadcrumb() {
 }
  
 export default function Navbar({ role = "admin", onToggleSidebar }) {
+
   const { user, logout } = useContext(AuthContext);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -99,10 +104,9 @@ export default function Navbar({ role = "admin", onToggleSidebar }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
  
-  const handleLogout = async () => {
+const handleLogout = async () => {
     await logout();
-    navigate("/login");
-  };
+};
  
   const mockNotifications = [
     { id: 1, text: "New lead assigned to you", time: "2m ago", unread: true },
