@@ -11,6 +11,10 @@ import AgentProperties from "../pages/agent/Properties";
 import AgentPropeties from "../pages/agent/Properties";
 
 import AgentSales from "../pages/agent/AgentSales";
+import AgentRentalApplications from "../pages/agent/RentalApplications";
+import AgentRentals from "../pages/agent/Rentals";
+import AgentPayments from "../pages/agent/Payments";
+import AgentContracts from "../pages/agent/Contracts";
 
 
 export default function AppRoutes() {
@@ -33,6 +37,10 @@ export default function AppRoutes() {
     {/* PUBLIC / AGENT */}
      <Route path="/agent/properties" element={<AgentPropeties />} />
     <Route path="/agent/sales" element={<AgentSales />} />
+    <Route path="/agent/rentals" element={<AgentRentals />} />
+    <Route path="/agent/applications" element={<AgentRentalApplications />} />
+    <Route path="/agent/payments" element={<AgentPayments />} />
+    <Route path="/agent/contracts" element={<AgentContracts />} />
 </Routes>
     );
 }
