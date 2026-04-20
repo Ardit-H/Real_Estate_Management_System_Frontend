@@ -99,9 +99,10 @@ const NAV_CONFIG = {
     {
       group: "My Activity",
       items: [
-        { to: "/client/applications", label: "My Applications", icon: "clipboard" },
+        { to: "/client/myapplications", label: "My Applications", icon: "clipboard" },
         { to: "/client/mycontracts", label: "My Contracts", icon: "file" },
         { to: "/client/mypayments", label: "My Payments", icon: "credit-card" },
+
       ],
     },
     {

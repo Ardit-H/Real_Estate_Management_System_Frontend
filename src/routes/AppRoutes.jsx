@@ -9,6 +9,7 @@ import PropertiesList from "../pages/shared/PropertiesList";
 import ClientPropeties from "../pages/client/BrowseProperties";
 import ClientContrats from "../pages/client/MyContracts";
 import ClientPayments from "../pages/client/MyPayments";
+import ClientApplications from "../pages/client/MyApplications";
 
 export default function AppRoutes() {
     return (
@@ -22,6 +23,10 @@ export default function AppRoutes() {
     <Route path="/client/browseproperties" element={<ClientPropeties />} />
     <Route path="/client/mycontracts" element={<ClientContrats/>}/>
     <Route path="/client/mypayments" element={<ClientPayments/>}/>
+    <Route path="/client/myapplications" element={<ClientApplications/>}/>
+    
+    
+
 
     {/* ROLE DASHBOARDS */}
     <Route path="/admin" element={<AdminDashboard />} />
