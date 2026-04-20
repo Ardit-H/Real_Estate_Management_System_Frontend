@@ -16,6 +16,9 @@ import AgentRentals from "../pages/agent/Rentals";
 import AgentPayments from "../pages/agent/Payments";
 import AgentContracts from "../pages/agent/Contracts";
 
+import ClientContrats from "../pages/client/MyContracts";
+import ClientPayments from "../pages/client/MyPayments";
+import ClientApplications from "../pages/client/MyApplications";
 
 export default function AppRoutes() {
     return (
@@ -27,6 +30,12 @@ export default function AppRoutes() {
     {/* PUBLIC / CLIENT */}
     <Route path="/client/properties" element={<PropertiesList />} />
     <Route path="/client/browseproperties" element={<ClientPropeties />} />
+    <Route path="/client/mycontracts" element={<ClientContrats/>}/>
+    <Route path="/client/mypayments" element={<ClientPayments/>}/>
+    <Route path="/client/myapplications" element={<ClientApplications/>}/>
+    
+    
+
 
     {/* ROLE DASHBOARDS */}
     <Route path="/admin" element={<AdminDashboard />} />

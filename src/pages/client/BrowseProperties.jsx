@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext } from "react";
 import MainLayout from "../../components/layout/Layout";
+import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ const ListIcon = () => (
 );
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const BASE_URL       = import.meta.env.VITE_API_URL || "http://localhost:8080";
 const PROPERTY_TYPES = ["APARTMENT", "HOUSE", "VILLA", "COMMERCIAL", "LAND", "OFFICE"];
 const LISTING_TYPES  = ["SALE", "RENT", "BOTH"];
 const PAGE_SIZE      = 12;
@@ -103,21 +104,360 @@ const gridStyle = (mode) => ({
   gap: "16px",
 });
 
-// ─── Property Card ─────────────────────────────────────────────────────────────
-function PropertyCard({ property, viewMode }) {
-  const badge  = listingBadge(property.listing_type);
-  const imageSrc =
-  property.primaryImage ||
-  property.primary_image ||
-  property.imageUrl;
+// ─── Rental Application Modal ─────────────────────────────────────────────────
+function RentalApplyModal({ property, onClose, onSuccess, notify }) {
+  const [listings,  setListings]  = useState([]);
+  const [loadingL,  setLoadingL]  = useState(true);
+  const [selectedL, setSelectedL] = useState(null);
+  const [form, setForm] = useState({
+    message:      "",
+    income:       "",
+    move_in_date: "",
+  });
+  const [saving, setSaving] = useState(false);
 
-const img = imageSrc
-  ? (imageSrc.startsWith("http")
-      ? imageSrc
-      : BASE_URL + imageSrc)
-  : PLACEHOLDER;
-  const isGrid = viewMode === "grid";
-  console.log("PROPERTY:", property);
+  useEffect(() => {
+    const h = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  useEffect(() => {
+    const loadListings = async () => {
+      setLoadingL(true);
+      try {
+        const res = await api.get(`/api/rentals/listings/property/${property.id}`);
+        const active = (Array.isArray(res.data) ? res.data : [])
+          .filter(l => l.status === "ACTIVE");
+        setListings(active);
+        if (active.length === 1) setSelectedL(active[0]);
+      } catch {
+        notify("Nuk u ngarkuan listings-et", "error");
+      } finally {
+        setLoadingL(false);
+      }
+    };
+    loadListings();
+  }, [property.id, notify]);
+
+  const handleSubmit = async () => {
+    if (!selectedL) { notify("Zgjidh një listing", "error"); return; }
+    setSaving(true);
+    try {
+      await api.post("/api/rentals/applications", {
+        listing_id:   selectedL.id,
+        message:      form.message      || null,
+        income:       form.income       ? Number(form.income) : null,
+        move_in_date: form.move_in_date || null,
+      });
+      onSuccess();
+    } catch (err) {
+      notify(err.response?.data?.message || "Gabim gjatë aplikimit", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fmtMoney = (v, cur = "EUR", period = "MONTHLY") =>
+    v != null ? `€${Number(v).toLocaleString("de-DE")} / ${period.toLowerCase()}` : "—";
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000,
+      background: "rgba(15,23,42,0.5)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ width: "100%", maxWidth: 540, background: "#fff",
+        borderRadius: 16, boxShadow: "0 20px 60px rgba(15,23,42,0.2)",
+        maxHeight: "90vh", overflowY: "auto", animation: "fadeUp .2s ease" }}>
+
+        {/* Header */}
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid #e8edf4",
+          display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: 15, margin: "0 0 3px" }}>
+              Apliko për Qira
+            </p>
+            <p style={{ fontSize: 12.5, color: "#64748b", margin: 0 }}>
+              {property.title}
+            </p>
+          </div>
+          <button onClick={onClose} style={{ border: "none", background: "none",
+            color: "#94a3b8", cursor: "pointer", fontSize: 16, padding: "4px" }}>✕</button>
+        </div>
+
+        <div style={{ padding: "20px 24px" }}>
+          {/* Listing selector */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={S.label}>Listing disponueshëm <span style={{ color: "#ef4444" }}>*</span></label>
+            {loadingL ? (
+              <div style={{ padding: "14px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+                Duke ngarkuar listings...
+              </div>
+            ) : listings.length === 0 ? (
+              <div style={{ background: "#fff7ed", border: "1px solid #fed7aa",
+                borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#c2410c" }}>
+                ⚠️ Nuk ka listings aktive për këtë pronë aktualisht.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {listings.map(l => (
+                  <div key={l.id}
+                    onClick={() => setSelectedL(l)}
+                    style={{
+                      padding: "12px 14px", borderRadius: 10, cursor: "pointer",
+                      border: `2px solid ${selectedL?.id === l.id ? "#6366f1" : "#e2e8f0"}`,
+                      background: selectedL?.id === l.id ? "#eef2ff" : "#f8fafc",
+                      transition: "all 0.15s",
+                    }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <p style={{ fontWeight: 600, fontSize: 13.5, margin: "0 0 3px" }}>
+                          {l.title || `Listing #${l.id}`}
+                        </p>
+                        <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                          {fmtMoney(l.price, l.currency, l.price_period)}
+                          {l.deposit && ` · Depozita: €${Number(l.deposit).toLocaleString()}`}
+                          {l.min_lease_months && ` · Min. ${l.min_lease_months} muaj`}
+                        </p>
+                        {(l.available_from || l.available_until) && (
+                          <p style={{ fontSize: 11.5, color: "#94a3b8", margin: "3px 0 0" }}>
+                            {l.available_from && `Nga: ${fmtDate(l.available_from)}`}
+                            {l.available_until && ` · Deri: ${fmtDate(l.available_until)}`}
+                          </p>
+                        )}
+                      </div>
+                      {selectedL?.id === l.id && (
+                        <div style={{ width: 20, height: 20, borderRadius: "50%",
+                          background: "#6366f1", display: "flex", alignItems: "center",
+                          justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                          ✓
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Form fields */}
+          {listings.length > 0 && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={S.label}>Të ardhura mujore (€)</label>
+                  <input className="form-input" type="number" min="0"
+                    placeholder="p.sh. 1500"
+                    value={form.income}
+                    onChange={e => setForm(f => ({ ...f, income: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={S.label}>Data e hyrjes</label>
+                  <input className="form-input" type="date"
+                    value={form.move_in_date}
+                    onChange={e => setForm(f => ({ ...f, move_in_date: e.target.value }))} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={S.label}>Mesazhi (opcional)</label>
+                <textarea
+                  rows={3}
+                  placeholder="Prezantohuni dhe shpjegoni pse jeni kandidati ideal..."
+                  value={form.message}
+                  onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                  style={{ width: "100%", padding: "9px 12px", border: "1px solid #cbd5e1",
+                    borderRadius: 10, fontSize: 14, fontFamily: "inherit",
+                    resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
+            <button className="btn btn--primary"
+              onClick={handleSubmit}
+              disabled={saving || listings.length === 0 || !selectedL}>
+              {saving ? "Duke dërguar..." : "Dërgo Aplikimin"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── My Applications Modal ─────────────────────────────────────────────────────
+function MyApplicationsModal({ onClose, notify }) {
+  const [apps,    setApps]    = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page,    setPage]    = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [cancelling, setCancelling] = useState(null);
+
+  useEffect(() => {
+    const h = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  const loadApps = useCallback(async (pg = 0) => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/api/rentals/applications/my?page=${pg}&size=10`);
+      setApps(res.data.content || []);
+      setTotalPages(res.data.totalPages || 0);
+      setPage(pg);
+    } catch {
+      notify("Gabim gjatë ngarkimit", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [notify]);
+
+  useEffect(() => { loadApps(0); }, [loadApps]);
+
+  const handleCancel = async (appId) => {
+    setCancelling(appId);
+    try {
+      await api.patch(`/api/rentals/applications/${appId}/cancel`);
+      notify("Aplikimi u anulua");
+      loadApps(page);
+    } catch (err) {
+      notify(err.response?.data?.message || "Gabim", "error");
+    } finally {
+      setCancelling(null);
+    }
+  };
+
+  const STATUS_STYLE = {
+    PENDING:   { bg: "#fffbeb", color: "#d97706" },
+    APPROVED:  { bg: "#ecfdf5", color: "#059669" },
+    REJECTED:  { bg: "#fef2f2", color: "#dc2626" },
+    CANCELLED: { bg: "#f1f5f9", color: "#64748b" },
+  };
+
+  const fmtDT = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
+  const fmtMon = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000,
+      background: "rgba(15,23,42,0.5)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ width: "100%", maxWidth: 640, background: "#fff",
+        borderRadius: 16, boxShadow: "0 20px 60px rgba(15,23,42,0.2)",
+        maxHeight: "90vh", overflowY: "auto", animation: "fadeUp .2s ease" }}>
+
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid #e8edf4",
+          display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>📋 Aplikimet e Mia</p>
+          <button onClick={onClose} style={{ border: "none", background: "none",
+            color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>✕</button>
+        </div>
+
+        <div style={{ padding: "20px 24px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 32 }}>
+              <div style={{ width: 28, height: 28, margin: "0 auto",
+                border: "3px solid #e8edf4", borderTop: "3px solid #6366f1",
+                borderRadius: "50%", animation: "spin .7s linear infinite" }} />
+            </div>
+          ) : apps.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 20px", color: "#94a3b8" }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>📭</div>
+              <p style={{ fontSize: 14 }}>Nuk keni dërguar aplikime akoma.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {apps.map(app => {
+                const s = STATUS_STYLE[app.status] || { bg: "#f1f5f9", color: "#64748b" };
+                return (
+                  <div key={app.id} style={{
+                    background: "#f8fafc", border: "1px solid #e8edf4",
+                    borderRadius: 10, padding: "14px 16px",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between",
+                      alignItems: "flex-start", marginBottom: 8 }}>
+                      <div>
+                        <p style={{ fontWeight: 600, fontSize: 13.5, margin: "0 0 3px" }}>
+                          Listing #{app.listing_id}
+                        </p>
+                        <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                          {fmtDT(app.created_at)}
+                          {app.income && ` · Të ardhura: ${fmtMon(app.income)}`}
+                          {app.move_in_date && ` · Hyrja: ${fmtDT(app.move_in_date)}`}
+                        </p>
+                      </div>
+                      <span style={{ background: s.bg, color: s.color,
+                        padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600,
+                        flexShrink: 0, marginLeft: 8 }}>
+                        {app.status}
+                      </span>
+                    </div>
+                    {app.message && (
+                      <p style={{ fontSize: 13, color: "#475569", margin: "6px 0",
+                        fontStyle: "italic" }}>"{app.message}"</p>
+                    )}
+                    {app.status === "APPROVED" && (
+                      <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0",
+                        borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#047857",
+                        marginTop: 8 }}>
+                        🎉 Aplikimi juaj u aprovua! Agjenti do t'ju kontaktojë së shpejti.
+                      </div>
+                    )}
+                    {app.rejection_reason && (
+                      <div style={{ background: "#fef2f2", border: "1px solid #fecaca",
+                        borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#dc2626",
+                        marginTop: 8 }}>
+                        ✕ Arsyeja: {app.rejection_reason}
+                      </div>
+                    )}
+                    {app.status === "PENDING" && (
+                      <div style={{ marginTop: 10 }}>
+                        <button
+                          className="btn btn--danger btn--sm"
+                          onClick={() => handleCancel(app.id)}
+                          disabled={cancelling === app.id}>
+                          {cancelling === app.id ? "Duke anuluar..." : "Anulo aplikimin"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 16 }}>
+              <button className="btn btn--secondary btn--sm" disabled={page === 0}
+                onClick={() => loadApps(page - 1)}>← Prev</button>
+              <span style={{ fontSize: 13, color: "#64748b", padding: "6px 8px" }}>
+                {page + 1} / {totalPages}
+              </span>
+              <button className="btn btn--secondary btn--sm" disabled={page >= totalPages - 1}
+                onClick={() => loadApps(page + 1)}>Next →</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Property Card ─────────────────────────────────────────────────────────────
+function PropertyCard({ property, viewMode, onApply, onViewDetail }) {
+  const badge    = listingBadge(property.listing_type);
+  const imageSrc = property.primaryImage || property.primary_image || property.imageUrl;
+  const img      = imageSrc
+    ? (imageSrc.startsWith("http") ? imageSrc : BASE_URL + imageSrc)
+    : PLACEHOLDER;
+  const isGrid   = viewMode === "grid";
+  const isRent   = property.listing_type === "RENT" || property.listing_type === "BOTH";
 
   return (
     <div
@@ -181,7 +521,8 @@ const img = imageSrc
       }}>
         <div>
           {(property.city || property.country) && (
-            <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#8a8469", fontSize: "12px", marginBottom: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px",
+              color: "#8a8469", fontSize: "12px", marginBottom: "6px" }}>
               <LocationIcon />
               <span>{[property.city, property.country].filter(Boolean).join(", ")}</span>
             </div>
@@ -192,26 +533,47 @@ const img = imageSrc
             overflow: "hidden", textOverflow: "ellipsis",
             display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
           }}>{property.title}</h3>
-          <div style={{ fontSize: isGrid ? "18px" : "20px", fontWeight: 800, color: "#5a5f3a", marginBottom: "10px" }}>
+          <div style={{ fontSize: isGrid ? "18px" : "20px", fontWeight: 800,
+            color: "#5a5f3a", marginBottom: "10px" }}>
             {formatPrice(property.price, property.currency)}
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "14px", color: "#6b6651", fontSize: "12.5px", flexWrap: "wrap" }}>
-          {property.bedrooms  != null && (
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <BedIcon /> {property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""}
-            </span>
-          )}
-          {property.bathrooms != null && (
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <BathIcon /> {property.bathrooms} bath{property.bathrooms !== 1 ? "s" : ""}
-            </span>
-          )}
-          {property.area_sqm  != null && (
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <AreaIcon /> {property.area_sqm} m²
-            </span>
+        <div>
+          <div style={{ display: "flex", gap: "14px", color: "#6b6651",
+            fontSize: "12.5px", flexWrap: "wrap", marginBottom: isRent ? 12 : 0 }}>
+            {property.bedrooms  != null && (
+              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <BedIcon /> {property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""}
+              </span>
+            )}
+            {property.bathrooms != null && (
+              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <BathIcon /> {property.bathrooms} bath{property.bathrooms !== 1 ? "s" : ""}
+              </span>
+            )}
+            {property.area_sqm  != null && (
+              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <AreaIcon /> {property.area_sqm} m²
+              </span>
+            )}
+          </div>
+
+          {/* Apply button for rentals */}
+          {isRent && property.status === "AVAILABLE" && (
+            <button
+              onClick={e => { e.stopPropagation(); onApply(property); }}
+              style={{
+                width: "100%", padding: "8px 14px", borderRadius: 8,
+                background: "#5a5f3a", color: "#fff",
+                border: "none", fontSize: 13, fontWeight: 700,
+                cursor: "pointer", fontFamily: "inherit",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => e.target.style.background = "#484e2e"}
+              onMouseLeave={e => e.target.style.background = "#5a5f3a"}>
+              🔑 Apliko për Qira
+            </button>
           )}
         </div>
       </div>
@@ -225,23 +587,20 @@ function NumberSelector({ label, filterKey, filters, setFilters, max = 8 }) {
     <div style={{ marginBottom: "16px" }}>
       <label style={S.filterLabel}>{label}</label>
       <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-        <button
-          onClick={() => setFilters(f => ({ ...f, [filterKey]: "" }))}
-          style={{ ...S.numBtn, background: filters[filterKey] === "" ? "#5a5f3a" : "#f0ece3", color: filters[filterKey] === "" ? "#fff" : "#5a5f3a" }}
-        >Any</button>
+        <button onClick={() => setFilters(f => ({ ...f, [filterKey]: "" }))}
+          style={{ ...S.numBtn, background: filters[filterKey] === "" ? "#5a5f3a" : "#f0ece3",
+            color: filters[filterKey] === "" ? "#fff" : "#5a5f3a" }}>Any</button>
         {Array.from({ length: max }, (_, i) => i + 1).map(n => (
-          <button
-            key={n}
-            onClick={() => setFilters(f => ({ ...f, [filterKey]: n }))}
-            style={{ ...S.numBtn, background: Number(filters[filterKey]) === n ? "#5a5f3a" : "#f0ece3", color: Number(filters[filterKey]) === n ? "#fff" : "#5a5f3a" }}
-          >{n}+</button>
+          <button key={n} onClick={() => setFilters(f => ({ ...f, [filterKey]: n }))}
+            style={{ ...S.numBtn,
+              background: Number(filters[filterKey]) === n ? "#5a5f3a" : "#f0ece3",
+              color: Number(filters[filterKey]) === n ? "#fff" : "#5a5f3a" }}>{n}+</button>
         ))}
       </div>
     </div>
   );
 }
 
-// ─── Range Input ──────────────────────────────────────────────────────────────
 function RangeInput({ label, minKey, maxKey, filters, setFilters, ph = ["Min", "Max"] }) {
   return (
     <div style={{ marginBottom: "16px" }}>
@@ -258,7 +617,6 @@ function RangeInput({ label, minKey, maxKey, filters, setFilters, ph = ["Min", "
   );
 }
 
-// ─── Filter Sidebar ────────────────────────────────────────────────────────────
 function FilterSidebar({ filters, setFilters, onApply, onReset }) {
   return (
     <aside style={{
@@ -269,15 +627,16 @@ function FilterSidebar({ filters, setFilters, onApply, onReset }) {
       maxHeight: "calc(100vh - 48px)", overflowY: "auto",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "7px", fontWeight: 700, color: "#2c2c1e", fontSize: "15px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "7px",
+          fontWeight: 700, color: "#2c2c1e", fontSize: "15px" }}>
           <FilterIcon /> Filters
         </div>
-        <button onClick={onReset} style={{ background: "none", border: "none", cursor: "pointer", color: "#8a8469", fontSize: "12px", textDecoration: "underline", fontFamily: "inherit" }}>
+        <button onClick={onReset} style={{ background: "none", border: "none", cursor: "pointer",
+          color: "#8a8469", fontSize: "12px", textDecoration: "underline", fontFamily: "inherit" }}>
           Reset all
         </button>
       </div>
 
-      {/* Listing Type */}
       <div style={{ marginBottom: "16px" }}>
         <label style={S.filterLabel}>Listing Type</label>
         <div style={{ display: "flex", gap: "6px" }}>
@@ -297,16 +656,15 @@ function FilterSidebar({ filters, setFilters, onApply, onReset }) {
         </div>
       </div>
 
-      {/* Property Type */}
       <div style={{ marginBottom: "16px" }}>
         <label style={S.filterLabel}>Property Type</label>
-        <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} style={S.select}>
+        <select value={filters.type}
+          onChange={e => setFilters(f => ({ ...f, type: e.target.value }))} style={S.select}>
           <option value="">All Types</option>
           {PROPERTY_TYPES.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
         </select>
       </div>
 
-      {/* City */}
       <div style={{ marginBottom: "16px" }}>
         <label style={S.filterLabel}>City</label>
         <input type="text" placeholder="e.g. Tirana" value={filters.city}
@@ -314,14 +672,18 @@ function FilterSidebar({ filters, setFilters, onApply, onReset }) {
           style={S.filterInputFull} />
       </div>
 
-      <RangeInput label="Price (EUR)" minKey="minPrice" maxKey="maxPrice" filters={filters} setFilters={setFilters} ph={["Min €", "Max €"]} />
-      <NumberSelector label="Min. Bedrooms"  filterKey="minBedrooms"  filters={filters} setFilters={setFilters} />
-      <NumberSelector label="Min. Bathrooms" filterKey="minBathrooms" filters={filters} setFilters={setFilters} max={5} />
-      <RangeInput label="Area (m²)" minKey="minArea" maxKey="maxArea" filters={filters} setFilters={setFilters} ph={["Min m²", "Max m²"]} />
+      <RangeInput label="Price (EUR)" minKey="minPrice" maxKey="maxPrice"
+        filters={filters} setFilters={setFilters} ph={["Min €", "Max €"]} />
+      <NumberSelector label="Min. Bedrooms"  filterKey="minBedrooms"
+        filters={filters} setFilters={setFilters} />
+      <NumberSelector label="Min. Bathrooms" filterKey="minBathrooms"
+        filters={filters} setFilters={setFilters} max={5} />
+      <RangeInput label="Area (m²)" minKey="minArea" maxKey="maxArea"
+        filters={filters} setFilters={setFilters} ph={["Min m²", "Max m²"]} />
 
-      {/* Featured */}
       <div style={{ marginBottom: "20px" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", color: "#4a4a36", fontSize: "13px" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px",
+          cursor: "pointer", color: "#4a4a36", fontSize: "13px" }}>
           <input type="checkbox" checked={filters.isFeatured === true}
             onChange={e => setFilters(f => ({ ...f, isFeatured: e.target.checked ? true : "" }))}
             style={{ accentColor: "#5a5f3a", width: "16px", height: "16px" }} />
@@ -334,15 +696,15 @@ function FilterSidebar({ filters, setFilters, onApply, onReset }) {
   );
 }
 
-// ─── Pagination ────────────────────────────────────────────────────────────────
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
   const pages   = Array.from({ length: totalPages }, (_, i) => i);
   const visible = pages.filter(p => p === 0 || p === totalPages - 1 || Math.abs(p - page) <= 1);
-
   return (
-    <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginTop: "36px", flexWrap: "wrap" }}>
-      <button disabled={page === 0} onClick={() => onChange(page - 1)} style={S.pageBtn(false, page === 0)}>‹</button>
+    <div style={{ display: "flex", justifyContent: "center", gap: "6px",
+      marginTop: "36px", flexWrap: "wrap" }}>
+      <button disabled={page === 0} onClick={() => onChange(page - 1)}
+        style={S.pageBtn(false, page === 0)}>‹</button>
       {visible.map((p, i) => {
         const gap = visible[i - 1] != null && p - visible[i - 1] > 1;
         return (
@@ -352,12 +714,12 @@ function Pagination({ page, totalPages, onChange }) {
           </span>
         );
       })}
-      <button disabled={page === totalPages - 1} onClick={() => onChange(page + 1)} style={S.pageBtn(false, page === totalPages - 1)}>›</button>
+      <button disabled={page === totalPages - 1} onClick={() => onChange(page + 1)}
+        style={S.pageBtn(false, page === totalPages - 1)}>›</button>
     </div>
   );
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
 function Skeleton({ viewMode }) {
   return (
     <div style={gridStyle(viewMode)}>
@@ -372,80 +734,86 @@ function Skeleton({ viewMode }) {
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ msg, type = "success", onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+  return (
+    <div style={{
+      position: "fixed", bottom: 28, right: 28, zIndex: 9999,
+      background: type === "error" ? "#fee2e2" : "#ecfdf5",
+      color: type === "error" ? "#b91c1c" : "#047857",
+      padding: "12px 20px", borderRadius: 10, fontSize: 13.5, fontWeight: 500,
+      boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340,
+    }}>{msg}</div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function BrowseProperties() {
-  const [properties,     setProperties]     = useState([]);
-  const [loading,        setLoading]        = useState(false);
-  const [error,          setError]          = useState(null);
-  const [searchQuery,    setSearchQuery]    = useState("");
-  const [filters,        setFilters]        = useState(DEFAULT_FILTERS);
-  const [pendingFilters, setPendingFilters] = useState(DEFAULT_FILTERS);
-  const [page,           setPage]           = useState(0);
-  const [totalPages,     setTotalPages]     = useState(0);
-  const [totalElements,  setTotalElements]  = useState(0);
-  const [viewMode,       setViewMode]       = useState("grid");
-  const [mode,           setMode]           = useState("filter");
+  const { user } = useContext(AuthContext);
 
-  // ── GET /api/properties/filter ────────────────────────────────────────────
+  const [properties,      setProperties]      = useState([]);
+  const [loading,         setLoading]         = useState(false);
+  const [error,           setError]           = useState(null);
+  const [searchQuery,     setSearchQuery]     = useState("");
+  const [filters,         setFilters]         = useState(DEFAULT_FILTERS);
+  const [pendingFilters,  setPendingFilters]  = useState(DEFAULT_FILTERS);
+  const [page,            setPage]            = useState(0);
+  const [totalPages,      setTotalPages]      = useState(0);
+  const [totalElements,   setTotalElements]   = useState(0);
+  const [viewMode,        setViewMode]        = useState("grid");
+  const [mode,            setMode]            = useState("filter");
+
+  // Rental application state
+  const [applyTarget,     setApplyTarget]     = useState(null);   // property to apply for
+  const [showMyApps,      setShowMyApps]      = useState(false);
+  const [toast,           setToast]           = useState(null);
+
+  const notify = useCallback((msg, type = "success") =>
+    setToast({ msg, type, key: Date.now() }), []);
+
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchFiltered = useCallback(async (f, pg = 0) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const params = { page: pg, size: PAGE_SIZE };;
-
+      const params = { page: pg, size: PAGE_SIZE };
       if (f.minPrice)     params.minPrice     = f.minPrice;
-if (f.maxPrice)     params.maxPrice     = f.maxPrice;
-
-if (f.minBedrooms)  params.minBedrooms  = f.minBedrooms;
-if (f.maxBedrooms)  params.maxBedrooms  = f.maxBedrooms;
-
-if (f.minBathrooms) params.minBathrooms = f.minBathrooms;
-
-if (f.minArea)      params.minArea      = f.minArea;
-if (f.maxArea)      params.maxArea      = f.maxArea;
-
-if (f.city)         params.city         = f.city;
-if (f.country)      params.country      = f.country;
-
-if (f.type)         params.type         = f.type;
-
-if (f.listingType)  params.listingType  = f.listingType;
-
-if (f.isFeatured)   params.isFeatured   = true;
-
+      if (f.maxPrice)     params.maxPrice     = f.maxPrice;
+      if (f.minBedrooms)  params.minBedrooms  = f.minBedrooms;
+      if (f.maxBedrooms)  params.maxBedrooms  = f.maxBedrooms;
+      if (f.minBathrooms) params.minBathrooms = f.minBathrooms;
+      if (f.minArea)      params.minArea      = f.minArea;
+      if (f.maxArea)      params.maxArea      = f.maxArea;
+      if (f.city)         params.city         = f.city;
+      if (f.country)      params.country      = f.country;
+      if (f.type)         params.type         = f.type;
+      if (f.listingType)  params.listingType  = f.listingType;
+      if (f.isFeatured)   params.isFeatured   = true;
       const res  = await api.get("/api/properties/filter", { params });
       const data = res.data;
-
       setProperties(data.content || []);
       setTotalPages(data.totalPages    ?? data.total_pages    ?? 0);
       setTotalElements(data.totalElements ?? data.total_elements ?? 0);
       setPage(pg);
-    } catch {
-      setError("Could not load properties. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Could not load properties. Please try again."); }
+    finally  { setLoading(false); }
   }, []);
 
-  // ── GET /api/properties/search ────────────────────────────────────────────
   const fetchSearch = useCallback(async (keyword, pg = 0) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const res  = await api.get("/api/properties/search", {
         params: { keyword, page: pg, size: PAGE_SIZE, sort: "createdAt,desc" },
       });
       const data = res.data;
-
       setProperties(data.content || []);
       setTotalPages(data.totalPages    ?? data.total_pages    ?? 0);
       setTotalElements(data.totalElements ?? data.total_elements ?? 0);
       setPage(pg);
-    } catch {
-      setError("Could not load properties. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Could not load properties. Please try again."); }
+    finally  { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchFiltered(DEFAULT_FILTERS, 0); }, [fetchFiltered]);
@@ -456,18 +824,13 @@ if (f.isFeatured)   params.isFeatured   = true;
   };
 
   const handleApplyFilters = () => {
-    setFilters(pendingFilters);
-    setMode("filter");
-    setSearchQuery("");
-    fetchFiltered(pendingFilters, 0);
+    setFilters(pendingFilters); setMode("filter");
+    setSearchQuery(""); fetchFiltered(pendingFilters, 0);
   };
 
   const handleResetFilters = () => {
-    setPendingFilters(DEFAULT_FILTERS);
-    setFilters(DEFAULT_FILTERS);
-    setMode("filter");
-    setSearchQuery("");
-    fetchFiltered(DEFAULT_FILTERS, 0);
+    setPendingFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS);
+    setMode("filter"); setSearchQuery(""); fetchFiltered(DEFAULT_FILTERS, 0);
   };
 
   const handlePageChange = (p) => {
@@ -486,26 +849,33 @@ if (f.isFeatured)   params.isFeatured   = true;
       <div style={{ background: "#f5f2eb", minHeight: "100vh", fontFamily: "'Georgia', serif" }}>
 
         {/* Hero */}
-        <div style={{ background: "linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)", padding: "48px 32px 40px", textAlign: "center" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: "32px", fontWeight: 800, color: "#fff", letterSpacing: "-0.5px" }}>
+        <div style={{ background: "linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)",
+          padding: "48px 32px 40px", textAlign: "center" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "32px", fontWeight: 800, color: "#fff",
+            letterSpacing: "-0.5px" }}>
             Find Your Perfect Property
           </h1>
           <p style={{ margin: "0 0 24px", color: "#c8ccaa", fontSize: "15px" }}>
             Browse thousands of listings — apartments, villas, offices and more.
           </p>
-          <div style={{ display: "flex", gap: "10px", maxWidth: "680px", margin: "0 auto" }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px", background: "#fff", borderRadius: "10px", padding: "10px 14px" }}>
+
+          {/* Search row */}
+          <div style={{ display: "flex", gap: "10px", maxWidth: "680px", margin: "0 auto 16px" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px",
+              background: "#fff", borderRadius: "10px", padding: "10px 14px" }}>
               <span style={{ color: "#8a8469", flexShrink: 0 }}><SearchIcon /></span>
               <input
                 type="text" placeholder="Search city, title, keyword…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
-                style={{ flex: 1, border: "none", outline: "none", fontSize: "14.5px", color: "#2c2c1e", background: "transparent", fontFamily: "inherit" }}
+                style={{ flex: 1, border: "none", outline: "none", fontSize: "14.5px",
+                  color: "#2c2c1e", background: "transparent", fontFamily: "inherit" }}
               />
               {searchQuery && (
                 <button onClick={() => { setSearchQuery(""); setMode("filter"); fetchFiltered(filters, 0); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#8a8469", padding: "0 4px" }}>
+                  style={{ background: "none", border: "none", cursor: "pointer",
+                    color: "#8a8469", padding: "0 4px" }}>
                   <CloseIcon />
                 </button>
               )}
@@ -520,12 +890,23 @@ if (f.isFeatured)   params.isFeatured   = true;
               <SearchIcon /> Search
             </button>
           </div>
+
+          {/* My Applications button */}
+          <button
+            onClick={() => setShowMyApps(true)}
+            style={{
+              background: "rgba(255,255,255,0.15)", color: "#fff",
+              border: "1px solid rgba(255,255,255,0.3)", borderRadius: "8px",
+              padding: "7px 16px", fontSize: "13px", fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(4px)",
+            }}>
+            📋 Aplikimet e Mia
+          </button>
         </div>
 
         {/* Body */}
         <div style={{ padding: "28px 24px", maxWidth: "1400px", margin: "0 auto" }}>
           <div style={{ display: "flex", gap: "24px", alignItems: "flex-start" }}>
-
             <FilterSidebar
               filters={pendingFilters}
               setFilters={setPendingFilters}
@@ -535,10 +916,12 @@ if (f.isFeatured)   params.isFeatured   = true;
 
             <main style={{ flex: 1, minWidth: 0 }}>
               {/* Toolbar */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between",
+                alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <span style={{ color: "#8a8469", fontSize: "13.5px" }}>
-                    {loading ? "Loading…" : `${totalElements.toLocaleString()} propert${totalElements !== 1 ? "ies" : "y"} found`}
+                    {loading ? "Loading…" :
+                      `${totalElements.toLocaleString()} propert${totalElements !== 1 ? "ies" : "y"} found`}
                   </span>
                   {activeFilterCount > 0 && (
                     <button onClick={handleResetFilters} style={{
@@ -577,16 +960,16 @@ if (f.isFeatured)   params.isFeatured   = true;
               {/* Error */}
               {error && (
                 <div style={{
-                  background: "#fff5f5", border: "1px solid #fecaca",
-                  borderRadius: "10px", padding: "14px 18px",
-                  color: "#c0392b", fontSize: "14px", marginBottom: "16px",
+                  background: "#fff5f5", border: "1px solid #fecaca", borderRadius: "10px",
+                  padding: "14px 18px", color: "#c0392b", fontSize: "14px", marginBottom: "16px",
                   display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
                 }}>
                   <strong>Error:</strong> {error}
                   <button
                     onClick={() => mode === "search" ? fetchSearch(searchQuery, page) : fetchFiltered(filters, page)}
-                    style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: "6px", padding: "5px 12px", cursor: "pointer", fontSize: "12.5px", fontFamily: "inherit" }}
-                  >Retry</button>
+                    style={{ background: "#c0392b", color: "#fff", border: "none",
+                      borderRadius: "6px", padding: "5px 12px", cursor: "pointer",
+                      fontSize: "12.5px", fontFamily: "inherit" }}>Retry</button>
                 </div>
               )}
 
@@ -597,7 +980,8 @@ if (f.isFeatured)   params.isFeatured   = true;
                   <div style={{ fontSize: "48px", marginBottom: "12px" }}>🏠</div>
                   <h3 style={{ color: "#5a5f3a", margin: "0 0 8px" }}>No properties found</h3>
                   <p style={{ margin: "0 0 16px" }}>Try adjusting your filters or search terms.</p>
-                  <button onClick={handleResetFilters} style={{ ...S.applyBtn, width: "auto", padding: "10px 24px" }}>
+                  <button onClick={handleResetFilters}
+                    style={{ ...S.applyBtn, width: "auto", padding: "10px 24px" }}>
                     Clear all filters
                   </button>
                 </div>
@@ -607,7 +991,13 @@ if (f.isFeatured)   params.isFeatured   = true;
                 <>
                   <div style={gridStyle(viewMode)}>
                     {properties.map(p => (
-                      <PropertyCard key={p.id} property={p} viewMode={viewMode} />
+                      <PropertyCard
+                        key={p.id}
+                        property={p}
+                        viewMode={viewMode}
+                        onApply={setApplyTarget}
+                        onViewDetail={() => {}}
+                      />
                     ))}
                   </div>
                   <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} />
@@ -618,15 +1008,47 @@ if (f.isFeatured)   params.isFeatured   = true;
         </div>
       </div>
 
+      {/* Rental Apply Modal */}
+      {applyTarget && (
+        <RentalApplyModal
+          property={applyTarget}
+          onClose={() => setApplyTarget(null)}
+          onSuccess={() => {
+            setApplyTarget(null);
+            notify("Aplikimi u dërgua me sukses! 🎉");
+          }}
+          notify={notify}
+        />
+      )}
+
+      {/* My Applications Modal */}
+      {showMyApps && (
+        <MyApplicationsModal
+          onClose={() => setShowMyApps(false)}
+          notify={notify}
+        />
+      )}
+
+      {toast && (
+        <Toast key={toast.key} msg={toast.msg} type={toast.type}
+          onDone={() => setToast(null)} />
+      )}
+
       <style>{`
         @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:.9} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes spin { to { transform:rotate(360deg); } }
       `}</style>
     </MainLayout>
   );
 }
 
-// ─── Styles object ────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const S = {
+  label: {
+    display: "block", fontSize: "12.5px", fontWeight: 600,
+    color: "#475569", marginBottom: "6px",
+  },
   filterLabel: {
     display: "block", fontSize: "11.5px", fontWeight: 700,
     color: "#6b6651", textTransform: "uppercase",
