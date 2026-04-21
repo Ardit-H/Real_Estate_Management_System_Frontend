@@ -47,11 +47,11 @@ export default function AppRoutes() {
     <Route path="/client" element={<ClientDashboard />} />
 
     {/* PUBLIC / AGENT */}
-     <Route path="/agent/properties" element={<AgentPropeties />} />
+     <Route path="/agent/properties" element={<AgentProperties />} />
     <Route path="/agent/sales" element={<AgentSales />} />
 
-    <Route path="/agent/profile"     element={<AgentProfile />} />
-<Route path="/agent/leads"       element={<AgentLeads />} />
+    <Route path="/agent/profile" element={<AgentProfile />} />
+<Route path="/agent/leads" element={<AgentLeads />} />
     <Route path="/agent/rentals" element={<AgentRentals />} />
     <Route path="/agent/applications" element={<AgentRentalApplications />} />
     <Route path="/agent/payments" element={<AgentPayments />} />
