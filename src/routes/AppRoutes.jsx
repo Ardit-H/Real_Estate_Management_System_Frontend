@@ -9,6 +9,7 @@ import PropertiesList from "../pages/shared/PropertiesList";
 import AdminProperties from "../pages/admin/AllProperties";
 import ClientPropeties from "../pages/client/BrowseProperties";
 import AgentProperties from "../pages/agent/Properties";
+import SalesAdminModule from "../pages/admin/AdminSales";
 
 import AgentSales from "../pages/agent/AgentSales";
 import AgentProfile from "../pages/agent/AgentProfile";
@@ -42,6 +43,7 @@ export default function AppRoutes() {
     {/* ROLE DASHBOARDS */}
     <Route path="/admin" element={<AdminDashboard />} />
     <Route path="/admin/allproperties" element={<AdminProperties/>} />
+    <Route path="/admin/sales" element={<SalesAdminModule/>} />
     
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />
