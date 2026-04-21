@@ -264,7 +264,7 @@ function LeadDetailModal({ lead, onClose, onStatusChange, onDecline, statusLoadi
                   ? "Ky lead nuk i është asignuar ende asnjë agjenti."
                   : lead.assigned_agent_id === user?.id
                     ? "Ky lead ju është asignuar juve."           // ← ID e juaja
-                    : `Ky lead i është asignuar agjentit #${lead.assigned_agent_id}.`}
+                    : `Ky lead i është asignuar agjentit ${lead.agent_name}.`}
               </span>
             </div>
           )}
@@ -295,13 +295,13 @@ function LeadDetailModal({ lead, onClose, onStatusChange, onDecline, statusLoadi
           {/* Info grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
             {[
-              { label: "Client ID",      value: `#${lead.client_id}` },
-              { label: "Property ID",    value: lead.property_id ? `#${lead.property_id}` : "—" },
+              { label: "Klienti",   value: lead.client_name  || `#${lead.client_id}` },
+              { label: "Titulli i Pronës",     value: lead.property_title || (lead.property_id ? `#${lead.property_id}` : "—") },
               { label: "Tipi",           value: `${TYPE_ICON[lead.type] || ""} ${lead.type}` },
               { label: "Burimi",         value: `${SOURCE_ICON[lead.source] || ""} ${lead.source}` },
               { label: "Buxheti",        value: fmtBudget(lead.budget) },
               { label: "Data preferuar", value: fmtDate(lead.preferred_date) },
-              { label: "Agjent assigned", value: lead.assigned_agent_id ? `#${lead.assigned_agent_id}` : "—" },
+              { label: "Agjenti",   value: lead.agent_name   || (lead.assigned_agent_id ? `#${lead.assigned_agent_id}` : "—") },
               { label: "Ndryshuar më",   value: fmtDateTime(lead.updated_at) },
             ].map(({ label, value }) => (
               <div key={label} style={{
@@ -351,30 +351,24 @@ function LeadRow({ lead, onView, onStatusChange, onDecline, statusLoading, isMyL
         </div>
       </td>
       <td>
-        <span style={{ background: "#eef2ff", color: "#6366f1",
-          padding: "2px 8px", borderRadius: 20, fontSize: 12, fontWeight: 500 }}>
-          #{lead.client_id}
-        </span>
+        <div>
+          <p style={{ fontWeight: 500, fontSize: 13, margin: 0 }}>
+            {lead.client_name || `#${lead.client_id}`}
+          </p>
+        </div>
       </td>
       <td>
-        {lead.property_id
-          ? <span style={{ background: "#f0f9ff", color: "#0ea5e9",
-              padding: "2px 8px", borderRadius: 20, fontSize: 12, fontWeight: 500 }}>
-              #{lead.property_id}
-            </span>
-          : <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>}
+        {lead.property_title
+          ? <span style={{ fontSize: 13 }}>#{lead.property_id}</span>
+          : <span style={{ color: "#94a3b8" }}>—</span>}
       </td>
       {/* NDRYSHIM: shfaq kolonën "Agjenti" vetëm jashtë My Leads */}
       {!isMyLead && (
         <td>
-          {lead.assigned_agent_id
-            ? <span style={{ background: "#f0fdf4", color: "#166534",
-                padding: "2px 8px", borderRadius: 20, fontSize: 12, fontWeight: 500 }}>
-                #{lead.assigned_agent_id}
-              </span>
-            : <span style={{ color: "#94a3b8", fontSize: 12, fontStyle: "italic" }}>
-                Pa agjent
-              </span>}
+          {lead.agent_name
+  ? <span style={{ fontWeight: 500, fontSize: 13 }}>{lead.agent_name}</span>
+  : <span style={{ color: "#94a3b8", fontSize: 12, fontStyle: "italic" }}>Pa agjent</span>}
+
         </td>
       )}
       <td style={{ fontSize: 12.5, color: "#64748b" }}>
@@ -674,17 +668,17 @@ export default function AgentLeads() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Tipi</th>
-                    <th>Client</th>
-                    <th>Property</th>
+                    <th style={{ textAlign: "center" }}>#</th>
+                    <th style={{ textAlign: "center" }}>Tipi</th>
+                    <th style={{ textAlign: "center" }}>Klienti</th>
+                    <th style={{ textAlign: "center" }}>ID e Pronës</th>
                     {/* NDRYSHIM: kolona Agjenti vetëm jashtë My Leads */}
-                    {!isMyLeadsTab && <th>Agjenti</th>}
-                    <th>Burimi</th>
-                    <th>Buxheti</th>
-                    <th>Statusi</th>
-                    <th>Krijuar</th>
-                    <th>Veprime</th>
+                    {!isMyLeadsTab && <th style={{ textAlign: "center" }}>Agjenti</th>}
+                    <th style={{ textAlign: "center" }}>Burimi</th>
+                    <th style={{ textAlign: "center" }}>Buxheti</th>
+                    <th style={{ textAlign: "center" }}>Statusi</th>
+                    <th style={{ textAlign: "center" }}>Krijuar</th>
+                    <th style={{ textAlign: "center" }}>Veprime</th>
                   </tr>
                 </thead>
                 <tbody>
