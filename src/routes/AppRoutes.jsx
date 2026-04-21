@@ -11,7 +11,8 @@ import AgentProperties from "../pages/agent/Properties";
 import AgentPropeties from "../pages/agent/Properties";
 
 import AgentSales from "../pages/agent/AgentSales";
-
+import AgentProfile from "../pages/agent/AgentProfile";
+import AgentLeads from "../pages/agent/AgentLeads";
 
 export default function AppRoutes() {
     return (
@@ -33,6 +34,9 @@ export default function AppRoutes() {
     {/* PUBLIC / AGENT */}
      <Route path="/agent/properties" element={<AgentPropeties />} />
     <Route path="/agent/sales" element={<AgentSales />} />
+
+    <Route path="/agent/profile"     element={<AgentProfile />} />
+<Route path="/agent/leads"       element={<AgentLeads />} />
 </Routes>
     );
 }
