@@ -15,7 +15,7 @@ const NAV_CONFIG = {
     {
       group: "Properties",
       items: [
-        { to: "/admin/properties", label: "All Properties", icon: "home" },
+        { to: "/admin/AllProperties", label: "All Properties", icon: "home" },
         { to: "/admin/sales", label: "Sales", icon: "tag" },
         { to: "/admin/rentals", label: "Rentals", icon: "key" },
       ],
@@ -99,9 +99,10 @@ const NAV_CONFIG = {
     {
       group: "My Activity",
       items: [
-        { to: "/client/applications", label: "My Applications", icon: "clipboard" },
-        { to: "/client/contracts", label: "My Contracts", icon: "file" },
-        { to: "/client/payments", label: "My Payments", icon: "credit-card" },
+        { to: "/client/myapplications", label: "My Applications", icon: "clipboard" },
+        { to: "/client/mycontracts", label: "My Contracts", icon: "file" },
+        { to: "/client/mypayments", label: "My Payments", icon: "credit-card" },
+
       ],
     },
     {

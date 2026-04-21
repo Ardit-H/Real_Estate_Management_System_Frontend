@@ -33,7 +33,7 @@ export default function PropertyTable({ properties, page, totalPages, onPageChan
         <table className="table">
           <thead>
             <tr>
-              <th>Property</th><th>Type</th><th>Price</th>
+               <th>Id</th><th>Property</th><th>Type</th><th>Price</th>
               <th>Status</th><th>Views</th><th>Actions</th>
             </tr>
           </thead>
@@ -42,6 +42,7 @@ export default function PropertyTable({ properties, page, totalPages, onPageChan
               const sc = STATUS_CONFIG[p.status] || STATUS_CONFIG.INACTIVE;
               return (
                 <tr key={p.id}>
+                   <td><span style={{ fontSize:13 }}>{TYPE_ICONS[p.type]||"🏠"} {p.id}</span></td>
                   <td>
                     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                       <PropImage src={p.primaryImage || p.primary_image} title={p.title} />
@@ -52,6 +53,7 @@ export default function PropertyTable({ properties, page, totalPages, onPageChan
                     </div>
                   </td>
                   <td><span style={{ fontSize:13 }}>{TYPE_ICONS[p.type]||"🏠"} {p.type}</span></td>
+                 
                   <td><span style={{ fontWeight:600, fontFamily:"var(--font-mono)", fontSize:13 }}>{fmtPrice(p.price, p.currency)}</span></td>
                   <td><span className={`badge ${sc.cls}`}>{sc.label}</span></td>
                   <td><span style={{ fontSize:13, color:"var(--text-secondary)" }}>👁 {p.view_count||0}</span></td>

@@ -6,13 +6,24 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import AgentDashboard from "../pages/agent/AgentDashboard";
 import ClientDashboard from "../pages/client/ClientDashboard";
 import PropertiesList from "../pages/shared/PropertiesList";
+import AdminProperties from "../pages/admin/AllProperties";
 import ClientPropeties from "../pages/client/BrowseProperties";
 import AgentProperties from "../pages/agent/Properties";
-import AgentPropeties from "../pages/agent/Properties";
 
 import AgentSales from "../pages/agent/AgentSales";
+<<<<<<< feature/agent-leads-profile
 import AgentProfile from "../pages/agent/AgentProfile";
 import AgentLeads from "../pages/agent/AgentLeads";
+=======
+import AgentRentalApplications from "../pages/agent/RentalApplications";
+import AgentRentals from "../pages/agent/Rentals";
+import AgentPayments from "../pages/agent/Payments";
+import AgentContracts from "../pages/agent/Contracts";
+
+import ClientContrats from "../pages/client/MyContracts";
+import ClientPayments from "../pages/client/MyPayments";
+import ClientApplications from "../pages/client/MyApplications";
+>>>>>>> main
 
 export default function AppRoutes() {
     return (
@@ -24,9 +35,16 @@ export default function AppRoutes() {
     {/* PUBLIC / CLIENT */}
     <Route path="/client/properties" element={<PropertiesList />} />
     <Route path="/client/browseproperties" element={<ClientPropeties />} />
+    <Route path="/client/mycontracts" element={<ClientContrats/>}/>
+    <Route path="/client/mypayments" element={<ClientPayments/>}/>
+    <Route path="/client/myapplications" element={<ClientApplications/>}/>
+    
+    
+
 
     {/* ROLE DASHBOARDS */}
     <Route path="/admin" element={<AdminDashboard />} />
+    <Route path="/admin/allproperties" element={<AdminProperties/>} />
     
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />
@@ -34,9 +52,16 @@ export default function AppRoutes() {
     {/* PUBLIC / AGENT */}
      <Route path="/agent/properties" element={<AgentPropeties />} />
     <Route path="/agent/sales" element={<AgentSales />} />
+<<<<<<< feature/agent-leads-profile
 
     <Route path="/agent/profile"     element={<AgentProfile />} />
 <Route path="/agent/leads"       element={<AgentLeads />} />
+=======
+    <Route path="/agent/rentals" element={<AgentRentals />} />
+    <Route path="/agent/applications" element={<AgentRentalApplications />} />
+    <Route path="/agent/payments" element={<AgentPayments />} />
+    <Route path="/agent/contracts" element={<AgentContracts />} />
+>>>>>>> main
 </Routes>
     );
 }
