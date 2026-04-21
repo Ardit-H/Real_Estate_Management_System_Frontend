@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useContext } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-
+import { AuthContext } from "../../context/AuthProvider";
+ 
 const NAV_CONFIG = {
   admin: [
     {
@@ -44,12 +45,12 @@ const NAV_CONFIG = {
       ],
     },
   ],
-
+ 
   agent: [
     {
       group: "Overview",
       items: [
-        { to: "/agent/dashboard", label: "Dashboard", icon: "grid" },
+        { to: "/agent", label: "Dashboard", icon: "grid" },
         { to: "/agent/my-stats", label: "My Performance", icon: "trending-up" },
       ],
     },
@@ -85,22 +86,23 @@ const NAV_CONFIG = {
       ],
     },
   ],
-
+ 
   client: [
     {
       group: "Explore",
       items: [
         { to: "/client/dashboard", label: "Home", icon: "grid" },
-        { to: "/client/properties", label: "Browse Properties", icon: "search" },
+        { to: "/client/browseproperties", label: "Browse Properties", icon: "search" },
         { to: "/client/saved", label: "Saved Properties", icon: "heart" },
       ],
     },
     {
       group: "My Activity",
       items: [
-        { to: "/client/applications", label: "My Applications", icon: "clipboard" },
-        { to: "/client/contracts", label: "My Contracts", icon: "file" },
-        { to: "/client/payments", label: "My Payments", icon: "credit-card" },
+        { to: "/client/myapplications", label: "My Applications", icon: "clipboard" },
+        { to: "/client/mycontracts", label: "My Contracts", icon: "file" },
+        { to: "/client/mypayments", label: "My Payments", icon: "credit-card" },
+
       ],
     },
     {
@@ -113,13 +115,24 @@ const NAV_CONFIG = {
     },
   ],
 };
-
+ 
 const ROLE_META = {
   admin: { label: "Administrator", color: "#6366f1", bg: "#eef2ff" },
   agent: { label: "Agent", color: "#0ea5e9", bg: "#f0f9ff" },
   client: { label: "Client", color: "#10b981", bg: "#ecfdf5" },
 };
-
+ 
+function getInitials(fullName) {
+  if (!fullName) return "??";
+  return fullName
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+}
+ 
 const Icon = ({ name, size = 16 }) => {
   const icons = {
     grid: (
@@ -242,12 +255,19 @@ const Icon = ({ name, size = 16 }) => {
   };
   return icons[name] || null;
 };
-
+ 
 export default function Sidebar({ role = "admin", collapsed = false }) {
+  const { user } = useContext(AuthContext);
   const location = useLocation();
-  const nav = NAV_CONFIG[role] || NAV_CONFIG.admin;
-  const meta = ROLE_META[role] || ROLE_META.admin;
-
+ 
+  // Roli aktiv: prefero atë nga user, përndryshe nga prop
+  const activeRole = user?.role || role;
+  const nav = NAV_CONFIG[activeRole] || NAV_CONFIG.admin;
+  const meta = ROLE_META[activeRole] || ROLE_META.admin;
+ 
+  const displayName = user?.fullName || "—";
+  const initials = getInitials(user?.fullName);
+ 
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       {/* Logo */}
@@ -258,16 +278,13 @@ export default function Sidebar({ role = "admin", collapsed = false }) {
         {!collapsed && (
           <div className="sidebar__brand-text">
             <span className="sidebar__brand-name">PropManager</span>
-            <span
-              className="sidebar__role-badge"
-              style={{ background: meta.bg, color: meta.color }}
-            >
+            <span className="sidebar__role-badge" style={{ background: meta.bg, color: meta.color }}>
               {meta.label}
             </span>
           </div>
         )}
       </div>
-
+ 
       {/* Nav */}
       <nav className="sidebar__nav">
         {nav.map((group) => (
@@ -292,24 +309,22 @@ export default function Sidebar({ role = "admin", collapsed = false }) {
                   {!collapsed && (
                     <span className="sidebar__link-label">{item.label}</span>
                   )}
-                  {active && !collapsed && (
-                    <span className="sidebar__link-dot" />
-                  )}
+                  {active && !collapsed && <span className="sidebar__link-dot" />}
                 </NavLink>
               );
             })}
           </div>
         ))}
       </nav>
-
+ 
       {/* User footer */}
       {!collapsed && (
         <div className="sidebar__footer">
           <div className="sidebar__avatar" style={{ background: meta.bg, color: meta.color }}>
-            {role === "admin" ? "AD" : role === "agent" ? "AG" : "CL"}
+            {initials}
           </div>
           <div className="sidebar__user-info">
-            <span className="sidebar__user-name">John Doe</span>
+            <span className="sidebar__user-name">{displayName}</span>
             <span className="sidebar__user-role">{meta.label}</span>
           </div>
         </div>
@@ -317,3 +332,4 @@ export default function Sidebar({ role = "admin", collapsed = false }) {
     </aside>
   );
 }
+ 
