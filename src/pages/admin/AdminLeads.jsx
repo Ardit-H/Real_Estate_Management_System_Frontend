@@ -127,9 +127,26 @@ function AssignModal({ lead, onClose, onSuccess, notify }) {
   const [agentId, setAgentId] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    api.get("/api/users/agents")
-      .then(r => setAgents(r.data || []))
+   useEffect(() => {
+    // Ngarko njëkohësisht profilet e agjentëve dhe listën e userëve
+    Promise.all([
+      api.get("/api/users/agents"),
+      api.get("/api/users"),
+    ])
+      .then(([profilesRes, usersRes]) => {
+        const profiles = profilesRes.data || [];
+        const users    = usersRes.data   || [];
+
+        // Bashko profile me emrat e userëve
+        const merged = profiles.map(p => {
+          const u = users.find(u => u.id === p.user_id);
+          return {
+            ...p,
+            full_name: u ? `${u.first_name} ${u.last_name}`.trim() : `Agjent #${p.user_id}`,
+          };
+        });
+        setAgents(merged);
+      })
       .catch(() => notify("Gabim gjatë ngarkimit të agjentëve", "error"));
   }, [notify]);
 
@@ -160,7 +177,7 @@ function AssignModal({ lead, onClose, onSuccess, notify }) {
           <option value="">— Zgjidh agjentin —</option>
           {agents.map(a => (
             <option key={a.user_id} value={a.user_id}>
-              {a.phone ? `Agjent #${a.user_id}` : `Agjent #${a.user_id}`}
+              {a.full_name}
               {a.specialization ? ` (${a.specialization})` : ""}
               {a.rating > 0 ? ` ★ ${Number(a.rating).toFixed(1)}` : ""}
             </option>
