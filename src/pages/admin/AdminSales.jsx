@@ -743,18 +743,35 @@ function ContractFormModal({ initial, prefill, onClose, onSuccess, notify }) {
     property_id:       initial?.property_id       ?? prefill?.propertyId ?? "",
     listing_id:        initial?.listing_id        ?? prefill?.listingId  ?? "",
     buyer_id:          initial?.buyer_id          ?? "",
-    sale_price:        initial?.sale_price        ?? prefill?.price       ?? "",
+    sale_price:        initial?.sale_price        ?? prefill?.price      ?? "",
     currency:          initial?.currency          ?? "EUR",
     contract_date:     initial?.contract_date     ?? "",
     handover_date:     initial?.handover_date     ?? "",
     contract_file_url: initial?.contract_file_url ?? "",
   });
   const [saving, setSaving] = useState(false);
-  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  // When contract_date changes, auto-clear handover_date if it would become invalid
+  const set = (k, v) => setForm((p) => {
+    const next = { ...p, [k]: v };
+    if (k === "contract_date" && next.handover_date && next.handover_date < v) {
+      next.handover_date = "";
+    }
+    return next;
+  });
+
+  // Derived validation — no extra useState needed
+  const dateError =
+    form.contract_date && form.handover_date && form.handover_date < form.contract_date
+      ? "Data e dorëzimit (Handover) nuk mund të jetë para datës së kontratës."
+      : null;
 
   const handleSubmit = async () => {
     if (!form.property_id || !form.buyer_id || !form.sale_price) {
       notify("Property ID, Buyer ID dhe çmimi janë të detyrueshme", "error"); return;
+    }
+    if (dateError) {
+      notify(dateError, "error"); return;
     }
     setSaving(true);
     try {
@@ -811,30 +828,96 @@ function ContractFormModal({ initial, prefill, onClose, onSuccess, notify }) {
             {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
           </select>
         </Field>
+
+        {/* ── Contract Date ─────────────────────────────────────── */}
         <Field label="Contract Date">
-          <input style={inputSt} type="date" value={form.contract_date}
-            onChange={(e) => set("contract_date", e.target.value)} />
+          <input
+            style={inputSt}
+            type="date"
+            value={form.contract_date}
+            onChange={(e) => set("contract_date", e.target.value)}
+          />
+          {form.contract_date && (
+            <p style={{ fontSize: 11, color: "#64748b", margin: "4px 0 0" }}>
+              📋 Handover duhet të jetë në këtë datë ose më vonë.
+            </p>
+          )}
         </Field>
       </Row>
       <Row>
+        {/* ── Handover Date — locked behind contract_date ────────── */}
         <Field label="Handover Date">
-          <input style={inputSt} type="date" value={form.handover_date}
-            onChange={(e) => set("handover_date", e.target.value)} />
+          <input
+            style={{
+              ...inputSt,
+              borderColor: dateError ? "#f87171" : "#d1d5db",
+              background:  dateError ? "#fff7f7" : "#fff",
+            }}
+            type="date"
+            value={form.handover_date}
+            min={form.contract_date || undefined}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (form.contract_date && val && val < form.contract_date) {
+                notify("Data e dorëzimit nuk mund të jetë para datës së kontratës.", "error");
+                return;
+              }
+              set("handover_date", val);
+            }}
+          />
+          {dateError ? (
+            <p style={{ fontSize: 11, color: "#ef4444", margin: "4px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+              ⚠ {dateError}
+            </p>
+          ) : !form.contract_date && (
+            <p style={{ fontSize: 11, color: "#94a3b8", margin: "4px 0 0" }}>
+              Zgjidh Contract Date fillimisht.
+            </p>
+          )}
         </Field>
+
         <Field label="Contract File URL">
           <input style={inputSt} value={form.contract_file_url}
             onChange={(e) => set("contract_file_url", e.target.value)} placeholder="https://..." />
         </Field>
       </Row>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+
+      {/* ── Visual timeline — shown when both dates are valid ─────── */}
+      {form.contract_date && form.handover_date && !dateError && (
+        <div style={{
+          display: "flex", alignItems: "center",
+          background: "#f0fdf4", border: "1px solid #a7f3d0",
+          borderRadius: 10, padding: "12px 18px", marginTop: 4, marginBottom: 4,
+        }}>
+          <div style={{ textAlign: "center", flexShrink: 0 }}>
+            <div style={{ fontSize: 20, marginBottom: 2 }}>📝</div>
+            <div style={{ fontWeight: 600, fontSize: 12, color: "#047857" }}>Kontratë</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{fmtDate(form.contract_date)}</div>
+          </div>
+          <div style={{ flex: 1, height: 2, background: "#34d399", margin: "0 14px", borderRadius: 999 }} />
+          <div style={{ textAlign: "center", flexShrink: 0 }}>
+            <div style={{ fontSize: 20, marginBottom: 2 }}>🏠</div>
+            <div style={{ fontWeight: 600, fontSize: 12, color: "#047857" }}>Dorëzim</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{fmtDate(form.handover_date)}</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
         <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
-        <button className="btn btn--primary" onClick={handleSubmit} disabled={saving}>
+        <button
+          className="btn btn--primary"
+          onClick={handleSubmit}
+          disabled={saving || !!dateError}
+          style={{ opacity: dateError ? 0.55 : 1, cursor: dateError ? "not-allowed" : "pointer" }}
+        >
           {saving ? "Duke ruajtur..." : initial ? "Ruaj ndryshimet" : "Krijo kontratë"}
         </button>
       </div>
     </Modal>
   );
 }
+
 
 function ContractDetailModal({ contract: c, onClose }) {
   return (

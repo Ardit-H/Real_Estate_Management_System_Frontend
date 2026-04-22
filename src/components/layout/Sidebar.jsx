@@ -8,7 +8,6 @@ const NAV_CONFIG = {
       group: "Overview",
       items: [
         { to: "/admin/dashboard", label: "Dashboard", icon: "grid" },
-        { to: "/admin/analytics", label: "Analytics", icon: "bar-chart" },
         { to: "/admin/audit-logs", label: "Audit Logs", icon: "file-text" },
       ],
     },
