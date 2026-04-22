@@ -93,7 +93,7 @@ const NAV_CONFIG = {
       items: [
         { to: "/client/dashboard", label: "Home", icon: "grid" },
         { to: "/client/browseproperties", label: "Browse Properties", icon: "search" },
-        { to: "/client/saved", label: "Saved Properties", icon: "heart" },
+        { to: "/client/savedproperties", label: "Saved Properties", icon: "heart" },
       ],
     },
     {

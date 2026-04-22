@@ -99,6 +99,11 @@ const MaximizeIcon = () => (
     <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
   </svg>
 );
+const HeartIcon = ({ filled }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+);
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BASE_URL       = import.meta.env.VITE_API_URL || "http://localhost:8080";
@@ -247,7 +252,7 @@ function PriceChart({ history }) {
   );
 }
 
-// ─── Property Detail Modal (from v1) ──────────────────────────────────────────
+// ─── Property Detail Modal ────────────────────────────────────────────────────
 function PropertyDetailModal({ propertyId, onClose, onApply }) {
   const [property,     setProperty]    = useState(null);
   const [priceHistory, setPriceHistory]= useState([]);
@@ -331,7 +336,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
           animation:"slideUpModal 0.25s ease",
           position:"relative",
         }}>
-          {/* Close button */}
           <button
             onClick={onClose}
             style={{
@@ -411,7 +415,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
 
               {/* Body */}
               <div style={{ padding:"24px 28px 28px" }}>
-                {/* Title + Price */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"16px", marginBottom:"8px", flexWrap:"wrap" }}>
                   <h2 style={{ margin:0, fontSize:"22px", fontWeight:800, color:"#2c2c1e", lineHeight:1.25, flex:1 }}>
                     {property.title}
@@ -434,7 +437,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                   </div>
                 )}
 
-                {/* Status chips */}
                 <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", marginBottom:"20px" }}>
                   <span style={{ background:"#edf2e8", color:"#3d5227", border:"1px solid #c8d4b0", borderRadius:"20px", padding:"3px 12px", fontSize:"12px", fontWeight:700 }}>
                     {property.status || "AVAILABLE"}
@@ -449,7 +451,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                   )}
                 </div>
 
-                {/* Specs Grid */}
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(130px,1fr))", gap:"10px", marginBottom:"22px" }}>
                   {[
                     { icon:<BedIcon/>,      label:"Bedrooms",   val:property.bedrooms },
@@ -469,7 +470,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                   ))}
                 </div>
 
-                {/* Description */}
                 {property.description && (
                   <div style={{ marginBottom:"22px" }}>
                     <h4 style={{ margin:"0 0 8px", fontSize:"13px", fontWeight:700, color:"#6b6651", textTransform:"uppercase", letterSpacing:"0.6px" }}>Description</h4>
@@ -479,7 +479,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                   </div>
                 )}
 
-                {/* Features */}
                 {features.length > 0 && (
                   <div style={{ marginBottom:"22px" }}>
                     <h4 style={{ margin:"0 0 10px", fontSize:"13px", fontWeight:700, color:"#6b6651", textTransform:"uppercase", letterSpacing:"0.6px" }}>Features & Amenities</h4>
@@ -493,12 +492,10 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                   </div>
                 )}
 
-                {/* Price History Chart */}
                 <div style={{ marginBottom:"22px", background:"#fff", border:"1px solid #e5e0d4", borderRadius:"12px", padding:"18px 20px" }}>
                   <PriceChart history={priceHistory} />
                 </div>
 
-                {/* Contact Agent Box — with conditional "Apliko për Qira" button */}
                 <div style={{ background:"linear-gradient(135deg, #5a5f3a, #3d4228)", borderRadius:"14px", padding:"20px 22px", color:"#fff" }}>
                   <h4 style={{ margin:"0 0 4px", fontSize:"14px", fontWeight:700, color:"#c8ccaa", textTransform:"uppercase", letterSpacing:"0.5px" }}>Contact Agent</h4>
                   <p style={{ margin:"0 0 16px", fontSize:"16px", fontWeight:700 }}>
@@ -523,7 +520,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                     }}>
                       <PhoneIcon /> Request Viewing
                     </button>
-                    {/* ── NEW: Apliko për Qira button shown only for rent properties ── */}
                     {isRent && (property.status === "AVAILABLE" || !property.status) && (
                       <button
                         onClick={() => { onClose(); onApply(property); }}
@@ -546,7 +542,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
         </div>
       </div>
 
-      {/* Fullscreen image overlay */}
       {fullscreen && (
         <div
           onClick={() => setFullscreen(false)}
@@ -572,7 +567,7 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
   );
 }
 
-// ─── Rental Application Modal (from v2) ───────────────────────────────────────
+// ─── Rental Application Modal ─────────────────────────────────────────────────
 function RentalApplyModal({ property, onClose, onSuccess, notify }) {
   const [listings,  setListings]  = useState([]);
   const [loadingL,  setLoadingL]  = useState(true);
@@ -631,7 +626,6 @@ function RentalApplyModal({ property, onClose, onSuccess, notify }) {
       onClick={e => e.target===e.currentTarget && onClose()}
     >
       <div style={{ width:"100%", maxWidth:540, background:"#fff", borderRadius:16, boxShadow:"0 20px 60px rgba(15,23,42,0.2)", maxHeight:"90vh", overflowY:"auto", animation:"fadeUp .2s ease" }}>
-        {/* Header */}
         <div style={{ padding:"18px 24px", borderBottom:"1px solid #e8edf4", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
             <p style={{ fontWeight:700, fontSize:15, margin:"0 0 3px" }}>Apliko për Qira</p>
@@ -641,7 +635,6 @@ function RentalApplyModal({ property, onClose, onSuccess, notify }) {
         </div>
 
         <div style={{ padding:"20px 24px" }}>
-          {/* Listing selector */}
           <div style={{ marginBottom:18 }}>
             <label style={S.label}>Listing disponueshëm <span style={{ color:"#ef4444" }}>*</span></label>
             {loadingL ? (
@@ -681,7 +674,6 @@ function RentalApplyModal({ property, onClose, onSuccess, notify }) {
             )}
           </div>
 
-          {/* Form fields */}
           {listings.length > 0 && (
             <>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
@@ -718,144 +710,20 @@ function RentalApplyModal({ property, onClose, onSuccess, notify }) {
   );
 }
 
-// ─── My Applications Modal (from v2) ──────────────────────────────────────────
-function MyApplicationsModal({ onClose, notify }) {
-  const [apps,       setApps]       = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [page,       setPage]       = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [cancelling, setCancelling] = useState(null);
-
-  useEffect(() => {
-    const h = (e) => e.key==="Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  const loadApps = useCallback(async (pg=0) => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/api/rentals/applications/my?page=${pg}&size=10`);
-      setApps(res.data.content||[]);
-      setTotalPages(res.data.totalPages||0);
-      setPage(pg);
-    } catch {
-      notify("Gabim gjatë ngarkimit", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [notify]);
-
-  useEffect(() => { loadApps(0); }, [loadApps]);
-
-  const handleCancel = async (appId) => {
-    setCancelling(appId);
-    try {
-      await api.patch(`/api/rentals/applications/${appId}/cancel`);
-      notify("Aplikimi u anulua");
-      loadApps(page);
-    } catch (err) {
-      notify(err.response?.data?.message||"Gabim", "error");
-    } finally {
-      setCancelling(null);
-    }
-  };
-
-  const STATUS_STYLE = {
-    PENDING:   { bg:"#fffbeb", color:"#d97706" },
-    APPROVED:  { bg:"#ecfdf5", color:"#059669" },
-    REJECTED:  { bg:"#fef2f2", color:"#dc2626" },
-    CANCELLED: { bg:"#f1f5f9", color:"#64748b" },
-  };
-  const fmtDT  = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
-  const fmtMon = (v) => v!=null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
-
-  return (
-    <div
-      style={{ position:"fixed", inset:0, zIndex:2000, background:"rgba(15,23,42,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
-      onClick={e => e.target===e.currentTarget && onClose()}
-    >
-      <div style={{ width:"100%", maxWidth:640, background:"#fff", borderRadius:16, boxShadow:"0 20px 60px rgba(15,23,42,0.2)", maxHeight:"90vh", overflowY:"auto", animation:"fadeUp .2s ease" }}>
-        <div style={{ padding:"18px 24px", borderBottom:"1px solid #e8edf4", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <p style={{ fontWeight:700, fontSize:15, margin:0 }}>📋 Aplikimet e Mia</p>
-          <button onClick={onClose} style={{ border:"none", background:"none", color:"#94a3b8", cursor:"pointer", fontSize:16 }}>✕</button>
-        </div>
-
-        <div style={{ padding:"20px 24px" }}>
-          {loading ? (
-            <div style={{ textAlign:"center", padding:32 }}>
-              <div style={{ width:28, height:28, margin:"0 auto", border:"3px solid #e8edf4", borderTop:"3px solid #6366f1", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>
-            </div>
-          ) : apps.length===0 ? (
-            <div style={{ textAlign:"center", padding:"48px 20px", color:"#94a3b8" }}>
-              <div style={{ fontSize:40, marginBottom:10 }}>📭</div>
-              <p style={{ fontSize:14 }}>Nuk keni dërguar aplikime akoma.</p>
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {apps.map(app => {
-                const s = STATUS_STYLE[app.status]||{bg:"#f1f5f9",color:"#64748b"};
-                return (
-                  <div key={app.id} style={{ background:"#f8fafc", border:"1px solid #e8edf4", borderRadius:10, padding:"14px 16px" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                      <div>
-                        <p style={{ fontWeight:600, fontSize:13.5, margin:"0 0 3px" }}>Listing #{app.listing_id}</p>
-                        <p style={{ fontSize:12, color:"#64748b", margin:0 }}>
-                          {fmtDT(app.created_at)}
-                          {app.income && ` · Të ardhura: ${fmtMon(app.income)}`}
-                          {app.move_in_date && ` · Hyrja: ${fmtDT(app.move_in_date)}`}
-                        </p>
-                      </div>
-                      <span style={{ background:s.bg, color:s.color, padding:"3px 10px", borderRadius:20, fontSize:11.5, fontWeight:600, flexShrink:0, marginLeft:8 }}>
-                        {app.status}
-                      </span>
-                    </div>
-                    {app.message && (
-                      <p style={{ fontSize:13, color:"#475569", margin:"6px 0", fontStyle:"italic" }}>"{app.message}"</p>
-                    )}
-                    {app.status==="APPROVED" && (
-                      <div style={{ background:"#ecfdf5", border:"1px solid #a7f3d0", borderRadius:8, padding:"8px 12px", fontSize:12.5, color:"#047857", marginTop:8 }}>
-                        🎉 Aplikimi juaj u aprovua! Agjenti do t'ju kontaktojë së shpejti.
-                      </div>
-                    )}
-                    {app.rejection_reason && (
-                      <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"8px 12px", fontSize:12.5, color:"#dc2626", marginTop:8 }}>
-                        ✕ Arsyeja: {app.rejection_reason}
-                      </div>
-                    )}
-                    {app.status==="PENDING" && (
-                      <div style={{ marginTop:10 }}>
-                        <button className="btn btn--danger btn--sm" onClick={()=>handleCancel(app.id)} disabled={cancelling===app.id}>
-                          {cancelling===app.id ? "Duke anuluar..." : "Anulo aplikimin"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {totalPages > 1 && (
-            <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:16 }}>
-              <button className="btn btn--secondary btn--sm" disabled={page===0} onClick={()=>loadApps(page-1)}>← Prev</button>
-              <span style={{ fontSize:13, color:"#64748b", padding:"6px 8px" }}>{page+1} / {totalPages}</span>
-              <button className="btn btn--secondary btn--sm" disabled={page>=totalPages-1} onClick={()=>loadApps(page+1)}>Next →</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Property Card ─────────────────────────────────────────────────────────────
-function PropertyCard({ property, viewMode, onOpen, onApply }) {
+function PropertyCard({ property, viewMode, onOpen, onApply, onSaveToggle, savedIds }) {
   const badge    = listingBadge(property.listing_type || property.listingType);
   const imageSrc = property.primaryImage || property.primary_image || property.imageUrl;
   const img      = imageSrc ? (imageSrc.startsWith("http") ? imageSrc : BASE_URL + imageSrc) : PLACEHOLDER;
   const isGrid   = viewMode === "grid";
   const isRent   = property.listing_type === "RENT" || property.listing_type === "BOTH"
                 || property.listingType  === "RENT" || property.listingType  === "BOTH";
+  const isSaved  = savedIds?.has(property.id);
+
+  const handleSave = (e) => {
+    e.stopPropagation();
+    onSaveToggle(property);
+  };
 
   return (
     <div
@@ -879,6 +747,23 @@ function PropertyCard({ property, viewMode, onOpen, onApply }) {
             <span style={{ background:"#c9a84c", color:"#fff", fontSize:"11px", fontWeight:700, padding:"3px 8px", borderRadius:"20px", display:"flex", alignItems:"center", gap:"3px" }}><StarIcon /> Featured</span>
           )}
         </div>
+        {/* Save / Heart button */}
+        <button
+          onClick={handleSave}
+          title={isSaved ? "Remove from saved" : "Save property"}
+          style={{
+            position:"absolute", top:"10px", right:"10px",
+            background: isSaved ? "#e74c3c" : "rgba(255,255,255,0.88)",
+            border:"none", borderRadius:"50%",
+            width:"32px", height:"32px",
+            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+            boxShadow:"0 2px 8px rgba(0,0,0,0.18)",
+            color: isSaved ? "#fff" : "#c0392b",
+            transition:"all 0.18s",
+          }}
+        >
+          <HeartIcon filled={isSaved} />
+        </button>
         <span style={{ position:"absolute", bottom:"10px", right:"10px", background:"rgba(0,0,0,0.55)", color:"#fff", fontSize:"11px", padding:"2px 8px", borderRadius:"8px", backdropFilter:"blur(4px)" }}>{typeLabel(property.type)}</span>
       </div>
 
@@ -904,7 +789,6 @@ function PropertyCard({ property, viewMode, onOpen, onApply }) {
             {(property.area_sqm??property.areaSqm) != null && <span style={{ display:"flex", alignItems:"center", gap:"4px" }}><AreaIcon/>{property.area_sqm??property.areaSqm} m²</span>}
           </div>
 
-          {/* Apliko për Qira button on the card */}
           {isRent && property.status==="AVAILABLE" && (
             <button
               onClick={e => { e.stopPropagation(); onApply(property); }}
@@ -1048,14 +932,61 @@ export default function BrowseProperties() {
   const [viewMode,       setViewMode]       = useState("grid");
   const [mode,           setMode]           = useState("filter");
 
+  // Saved properties IDs set (for heart toggle)
+  const [savedIds, setSavedIds] = useState(new Set());
+
   // Modal state
-  const [selectedId,  setSelectedId]  = useState(null); // detail modal
-  const [applyTarget, setApplyTarget] = useState(null); // rental apply modal
-  const [showMyApps,  setShowMyApps]  = useState(false);
+  const [selectedId,  setSelectedId]  = useState(null);
+  const [applyTarget, setApplyTarget] = useState(null);
   const [toast,       setToast]       = useState(null);
 
   const notify = useCallback((msg, type="success") =>
     setToast({ msg, type, key:Date.now() }), []);
+
+  // ── Load saved property IDs on mount ─────────────────────────────────────
+  useEffect(() => {
+    const loadSaved = async () => {
+      try {
+        const res = await api.get("/api/saved-properties/ids");
+        if (Array.isArray(res.data)) {
+          setSavedIds(new Set(res.data));
+        }
+      } catch {
+        // silently fail — not critical
+      }
+    };
+    loadSaved();
+  }, []);
+
+  // ── Toggle save ───────────────────────────────────────────────────────────
+  const handleSaveToggle = useCallback(async (property) => {
+    const isSaved = savedIds.has(property.id);
+    // Optimistic update
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      if (isSaved) next.delete(property.id);
+      else next.add(property.id);
+      return next;
+    });
+    try {
+      if (isSaved) {
+        await api.delete(`/api/saved-properties/${property.id}`);
+        notify("Prona u hoq nga të preferuarat");
+      } else {
+        await api.post("/api/saved-properties", { property_id: property.id });
+        notify("Prona u ruajt në të preferuara ❤️");
+      }
+    } catch (err) {
+      // Revert on error
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        if (isSaved) next.add(property.id);
+        else next.delete(property.id);
+        return next;
+      });
+      notify(err.response?.data?.message || "Gabim gjatë ruajtjes", "error");
+    }
+  }, [savedIds, notify]);
 
   // ── Fetch filtered ────────────────────────────────────────────────────────
   const fetchFiltered = useCallback(async (f, pg=0) => {
@@ -1136,7 +1067,7 @@ export default function BrowseProperties() {
         <div style={{ background:"linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)", padding:"48px 32px 40px", textAlign:"center" }}>
           <h1 style={{ margin:"0 0 8px", fontSize:"32px", fontWeight:800, color:"#fff", letterSpacing:"-0.5px" }}>Find Your Perfect Property</h1>
           <p style={{ margin:"0 0 24px", color:"#c8ccaa", fontSize:"15px" }}>Browse thousands of listings — apartments, villas, offices and more.</p>
-          <div style={{ display:"flex", gap:"10px", maxWidth:"680px", margin:"0 auto 16px" }}>
+          <div style={{ display:"flex", gap:"10px", maxWidth:"680px", margin:"0 auto" }}>
             <div style={{ flex:1, display:"flex", alignItems:"center", gap:"10px", background:"#fff", borderRadius:"10px", padding:"10px 14px" }}>
               <span style={{ color:"#8a8469", flexShrink:0 }}><SearchIcon/></span>
               <input type="text" placeholder="Search city, title, keyword…" value={searchQuery}
@@ -1153,13 +1084,6 @@ export default function BrowseProperties() {
               <SearchIcon/> Search
             </button>
           </div>
-          {/* My Applications button */}
-          <button
-            onClick={() => setShowMyApps(true)}
-            style={{ background:"rgba(255,255,255,0.15)", color:"#fff", border:"1px solid rgba(255,255,255,0.3)", borderRadius:"8px", padding:"7px 16px", fontSize:"13px", fontWeight:600, cursor:"pointer", fontFamily:"inherit", backdropFilter:"blur(4px)" }}
-          >
-            📋 Aplikimet e Mia
-          </button>
         </div>
 
         {/* Body */}
@@ -1220,6 +1144,8 @@ export default function BrowseProperties() {
                         viewMode={viewMode}
                         onOpen={setSelectedId}
                         onApply={setApplyTarget}
+                        onSaveToggle={handleSaveToggle}
+                        savedIds={savedIds}
                       />
                     ))}
                   </div>
@@ -1252,14 +1178,6 @@ export default function BrowseProperties() {
             setApplyTarget(null);
             notify("Aplikimi u dërgua me sukses! 🎉");
           }}
-          notify={notify}
-        />
-      )}
-
-      {/* ── My Applications Modal ── */}
-      {showMyApps && (
-        <MyApplicationsModal
-          onClose={() => setShowMyApps(false)}
           notify={notify}
         />
       )}
