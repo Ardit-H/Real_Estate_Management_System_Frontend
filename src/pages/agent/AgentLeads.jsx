@@ -14,7 +14,7 @@ const STATUS_STYLE = {
   DECLINED:    { bg:"#fff7ed", color:"#ea580c", label:"Declined" },
 };
 
-const TYPE_ICON   = { SELL:"🏷️", BUY:"🏠", RENT:"🔑", VALUATION:"📊" };
+const TYPE_ICON   = { SELL:"🏷️", BUY:"🏠", RENT:"🔑", RENT_SEEKING:"🔎",  VALUATION:"📊" };
 const SOURCE_ICON = { WEBSITE:"🌐", PHONE:"📞", EMAIL:"✉️", REFERRAL:"👥", SOCIAL:"📱" };
 
 const fmtDate     = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
