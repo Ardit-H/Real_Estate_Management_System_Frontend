@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback,  useContext } from "react";
+import { AuthContext } from "../../context/AuthProvider";
 import MainLayout from "../../components/layout/Layout";
 import api from "../../api/axios";
  
@@ -167,7 +168,7 @@ function SectionTabs({ active, onChange }) {
 // LISTINGS SECTION
 // ═══════════════════════════════════════════════════════════════════════════════
  
-function ListingsSection({ onSelectContract, notify }) {
+function ListingsSection({ onSelectContract, notify, currentUserId }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -176,13 +177,17 @@ function ListingsSection({ onSelectContract, notify }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [showOnlyMine, setShowOnlyMine] = useState(true);
+  const [agentNames, setAgentNames] = useState({});
  
   const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
-      const url = statusFilter
-        ? `/api/sales/listings/status/${statusFilter}?page=${page}&size=10`
-        : `/api/sales/listings?page=${page}&size=10&sortBy=createdAt&sortDir=desc`;
+      const url = showOnlyMine
+        ? `/api/sales/listings/agent/me?page=${page}&size=10`
+        : statusFilter
+          ? `/api/sales/listings/status/${statusFilter}?page=${page}&size=10`
+          : `/api/sales/listings?page=${page}&size=10&sortBy=createdAt&sortDir=desc`;
       const res = await api.get(url);
       const data = res.data;
       setListings(data.content || []);
@@ -192,9 +197,20 @@ function ListingsSection({ onSelectContract, notify }) {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, notify]);
+  }, [page, statusFilter, showOnlyMine, notify]);
  
   useEffect(() => { fetchListings(); }, [fetchListings]);
+  useEffect(() => {
+    api.get("/api/users/agents/list")
+      .then(res => {
+        const map = {};
+        (res.data || []).forEach(u => {
+          map[u.id] = `${u.first_name} ${u.last_name}`.trim() || `Agjent #${u.id}`;
+        });
+        setAgentNames(map);
+      })
+      .catch(() => {}); // silent fail — nuk e bllokon UI-n
+  }, []);
  
   const handleDelete = async () => {
     try {
@@ -212,17 +228,33 @@ function ListingsSection({ onSelectContract, notify }) {
       <div className="card">
         <div className="card__header">
           <h2 className="card__title">Sale Listings</h2>
-          <div className="flex gap-2 items-center">
-            <select
-              className="form-select"
-              style={{ width: 160, height: 34, padding: "0 10px", fontSize: 13 }}
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-            >
-              <option value="">All statuses</option>
-              {SALE_STATUSES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <button className="btn btn--primary btn--sm" onClick={() => { setEditTarget(null); setModalOpen(true); }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <button
+              onClick={() => { setShowOnlyMine(p => !p); setPage(0); }}
+              style={{
+                padding:"5px 14px", borderRadius:20, fontSize:12.5, fontWeight:500,
+                cursor:"pointer", border:"1px solid",
+                background: showOnlyMine ? "#eef2ff" : "#f1f5f9",
+                color:       showOnlyMine ? "#6366f1" : "#64748b",
+                borderColor: showOnlyMine ? "#c7d7fe" : "#e2e8f0",
+              }}>
+              {showOnlyMine ? "👤 My Listings" : "🌐 All Listings"}
+            </button>
+
+            {/* filtri i statusit — vetëm kur shikon të gjitha */}
+            {!showOnlyMine && (
+              <select
+                className="form-select"
+                style={{ width:160, height:34, padding:"0 10px", fontSize:13 }}
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(0); }}>
+                <option value="">All statuses</option>
+                {SALE_STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            )}
+
+            <button className="btn btn--primary btn--sm"
+              onClick={() => { setEditTarget(null); setModalOpen(true); }}>
               + New Listing
             </button>
           </div>
@@ -238,6 +270,7 @@ function ListingsSection({ onSelectContract, notify }) {
                   <tr>
                     <th>#</th>
                     <th>Property ID</th>
+                    {!showOnlyMine && <th>Agjenti</th>}
                     <th>Price</th>
                     <th>Negotiable</th>
                     <th>Status</th>
@@ -246,8 +279,10 @@ function ListingsSection({ onSelectContract, notify }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {listings.map((l) => (
-                    <tr key={l.id}>
+                  {listings.map((l) => {
+                    const isOwner = l.agent_id === currentUserId;  // ← kontrolli kryesor
+                    return (
+                      <tr key={l.id}>
                       <td style={{ color: "#94a3b8", fontSize: 12 }}>{l.id}</td>
                       <td>
                         <span style={{
@@ -257,6 +292,13 @@ function ListingsSection({ onSelectContract, notify }) {
                           #{l.property_id}
                         </span>
                       </td>
+                      {!showOnlyMine && (
+                          <td style={{ fontSize:12.5, color:"#64748b" }}>
+                            {l.agent_id === currentUserId
+                              ? <span style={{ color:"#6366f1", fontWeight:500 }}>👤 Unë</span>
+                              : <span style={{ color:"#475569" }}>{agentNames[l.agent_id] || `Agjent #${l.agent_id}`}</span>}
+                          </td>
+                        )}
                       <td style={{ fontWeight: 600 }}>{fmtPrice(l.price, l.currency)}</td>
                       <td>
                         <span style={{
@@ -268,24 +310,40 @@ function ListingsSection({ onSelectContract, notify }) {
                       </td>
                       <td><Badge label={l.status} /></td>
                       <td className="text-muted">{fmtDate(l.created_at)}</td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button
-                            className="btn btn--secondary btn--sm"
-                            onClick={() => { setEditTarget(l); setModalOpen(true); }}
-                          >Edit</button>
-                          <button
-                            className="btn btn--primary btn--sm"
-                            onClick={() => onSelectContract({ listingId: l.id, propertyId: l.property_id, price: l.price })}
-                          >Contract →</button>
-                          <button
-                            className="btn btn--danger btn--sm"
-                            onClick={() => setDeleteId(l.id)}
-                          >Del</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            
+                            <td>
+        <div className="flex gap-2">
+          {isOwner ? (
+            // Veprimet e plota — vetëm për listings e veta
+            <>
+              <button className="btn btn--secondary btn--sm"
+                onClick={() => { setEditTarget(l); setModalOpen(true); }}>
+                Edit
+              </button>
+              <button className="btn btn--primary btn--sm"
+                onClick={() => onSelectContract({ listingId:l.id, propertyId:l.property_id, price:l.price })}>
+                Contract →
+              </button>
+              <button className="btn btn--danger btn--sm"
+                onClick={() => setDeleteId(l.id)}>
+                Del
+              </button>
+            </>
+          ) : (
+            // Vetëm "View" për listings të agjentëve të tjerë
+            <span style={{
+              fontSize:11.5, color:"#94a3b8", background:"#f1f5f9",
+              padding:"3px 10px", borderRadius:20, fontStyle:"italic"
+            }}>
+              Vetëm shiko
+            </span>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+})}
+
                 </tbody>
               </table>
             </div>
@@ -426,7 +484,7 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
 // CONTRACTS SECTION
 // ═══════════════════════════════════════════════════════════════════════════════
  
-function ContractsSection({ prefill, onSelectPayment, notify }) {
+function ContractsSection({ prefill, onSelectPayment, notify, currentUserId }) {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -507,22 +565,20 @@ function ContractsSection({ prefill, onSelectPayment, notify }) {
                       <td><Badge label={c.status} /></td>
                       <td>
                         <div className="flex gap-2">
-                          {c.status === "PENDING" && (
+                          {c.status === "PENDING" && c.agent_id === currentUserId && (
                             <>
                               <button className="btn btn--secondary btn--sm"
-                                onClick={() => { setEditTarget(c); setModalOpen(true); }}>
-                                Edit
-                              </button>
+                                onClick={() => { setEditTarget(c); setModalOpen(true); }}>Edit</button>
                               <button className="btn btn--ghost btn--sm"
-                                onClick={() => setStatusTarget(c)}>
-                                Status
-                              </button>
+                                onClick={() => setStatusTarget(c)}>Status</button>
                             </>
                           )}
-                          <button className="btn btn--primary btn--sm"
-                            onClick={() => onSelectPayment({ contractId: c.id, salePrice: c.sale_price })}>
-                            Payments →
-                          </button>
+                          {c.agent_id === currentUserId && (
+                            <button className="btn btn--primary btn--sm"
+                              onClick={() => onSelectPayment({ contractId:c.id, salePrice:c.sale_price })}>
+                              Payments →
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -652,7 +708,8 @@ function ContractModal({ initial, prefill, onClose, onSuccess, notify }) {
       <FormRow>
         <Field label="Handover Date">
           <input className="form-input" type="date" value={form.handover_date}
-            onChange={(e) => set("handover_date", e.target.value)} />
+            onChange={(e) => set("handover_date", e.target.value)}
+            min={form.contract_date || new Date().toISOString().split("T")[0]} />
         </Field>
         <Field label="Contract File URL">
           <input className="form-input" value={form.contract_file_url}
@@ -1050,6 +1107,7 @@ function MarkPaidModal({ payment, onClose, onSubmit, notify }) {
 // ═══════════════════════════════════════════════════════════════════════════════
  
 export default function AgentSales() {
+  const { user } = useContext(AuthContext);
   const [tab, setTab] = useState("listings");
   const [toast, setToast] = useState(null);
  
@@ -1136,6 +1194,7 @@ export default function AgentSales() {
         <ListingsSection
           onSelectContract={goToContract}
           notify={notify}
+          currentUserId={user?.id}
         />
       )}
       {tab === "contracts" && (
@@ -1143,6 +1202,7 @@ export default function AgentSales() {
           prefill={contractPrefill}
           onSelectPayment={goToPayment}
           notify={notify}
+          currentUserId={user?.id}
         />
       )}
       {tab === "payments" && (
