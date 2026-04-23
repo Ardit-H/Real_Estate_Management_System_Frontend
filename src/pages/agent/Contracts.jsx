@@ -142,62 +142,151 @@ function ContractModal({ initial, onClose, onSuccess, notify }) {
     currency:          initial?.currency          ?? "EUR",
     contract_file_url: initial?.contract_file_url ?? "",
   });
+  
+  const [properties, setProperties] = useState([]);
+  const [listings, setListings] = useState([]);
+  const [loadingProps, setLoadingProps] = useState(false);
+  const [loadingListings, setLoadingListings] = useState(false);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleSubmit = async () => {
-    if (!form.property_id || !form.client_id || !form.start_date || !form.end_date || !form.rent) {
-      notify("Plotëso fushat e detyrueshme", "error");
-      return;
-    }
-    if (form.end_date <= form.start_date) {
-      notify("Data e përfundimit duhet të jetë pas datës fillimit", "error");
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        property_id:       Number(form.property_id),
-        listing_id:        form.listing_id ? Number(form.listing_id) : null,
-        client_id:         Number(form.client_id),
-        start_date:        form.start_date,
-        end_date:          form.end_date,
-        rent:              Number(form.rent),
-        deposit:           form.deposit ? Number(form.deposit) : null,
-        currency:          form.currency,
-        contract_file_url: form.contract_file_url || null,
-      };
-      if (initial) {
-        await api.put(`/api/contracts/lease/${initial.id}`, payload);
-      } else {
-        await api.post("/api/contracts/lease", payload);
+  // Fetch all properties on mount
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setLoadingProps(true);
+      try {
+        const res = await api.get("/api/properties?size=100");
+        setProperties(res.data.content || []);
+      } catch (err) {
+        console.error("Gabim gjatë ngarkimit të properties", err);
+      } finally {
+        setLoadingProps(false);
       }
-      onSuccess();
-    } catch (err) {
-      notify(err.response?.data?.message || "Gabim gjatë ruajtjes", "error");
-    } finally {
-      setSaving(false);
+    };
+    fetchProperties();
+  }, []);
+
+  // Fetch listings when property is selected
+  useEffect(() => {
+    const fetchListingsForProperty = async () => {
+      if (!form.property_id) {
+        setListings([]);
+        return;
+      }
+      setLoadingListings(true);
+      try {
+        const res = await api.get(`/api/rentals/listings/property/${form.property_id}`);
+        setListings(res.data || []);
+      } catch (err) {
+        console.error("Gabim gjatë ngarkimit të listings për property", err);
+        setListings([]);
+      } finally {
+        setLoadingListings(false);
+      }
+    };
+    fetchListingsForProperty();
+  }, [form.property_id]);
+
+  const handleSubmit = async () => {
+  console.log("=== DEBUG FORM VALUES ===");
+  console.log("property_id:", form.property_id, "type:", typeof form.property_id);
+  console.log("client_id:", form.client_id, "type:", typeof form.client_id);
+  console.log("start_date:", form.start_date, "type:", typeof form.start_date);
+  console.log("end_date:", form.end_date, "type:", typeof form.end_date);
+  console.log("rent:", form.rent, "type:", typeof form.rent);
+  console.log("listing_id:", form.listing_id);
+  console.log("deposit:", form.deposit);
+  console.log("currency:", form.currency);
+  
+  if (!form.property_id || !form.client_id || !form.start_date || !form.end_date || !form.rent) {
+    console.log("VALIDATION FAILED - missing field");
+    notify("Plotëso fushat e detyrueshme", "error");
+    return;
+  }
+  if (form.end_date <= form.start_date) {
+    console.log("VALIDATION FAILED - end date <= start date");
+    notify("Data e përfundimit duhet të jetë pas datës fillimit", "error");
+    return;
+  }
+  
+  console.log("VALIDATION PASSED - sending request");
+  setSaving(true);
+  try {
+    const payload = {
+      property_id:       Number(form.property_id),
+      listing_id:        form.listing_id ? Number(form.listing_id) : null,
+      client_id:         Number(form.client_id),
+      start_date:        form.start_date,
+      end_date:          form.end_date,
+      rent:              Number(form.rent),
+      deposit:           form.deposit ? Number(form.deposit) : null,
+      currency:          form.currency,
+      contract_file_url: form.contract_file_url || null,
+    };
+    console.log("PAYLOAD:", payload);
+    if (initial) {
+      await api.put(`/api/contracts/lease/${initial.id}`, payload);
+    } else {
+      await api.post("/api/contracts/lease", payload);
     }
-  };
+    onSuccess();
+  } catch (err) {
+    console.error("ERROR:", err.response?.data);
+    notify(err.response?.data?.message || "Gabim gjatë ruajtjes", "error");
+  } finally {
+    setSaving(false);
+  }
+};
+
+  const activeListings = listings.filter(l => l.status === "ACTIVE");
 
   return (
     <Modal title={initial ? `Edit Kontratë #${initial.id}` : "New Lease Contract"}
       onClose={onClose} wide>
       <Row2>
-        <Field label="Property ID" required>
-          <input className="form-input" type="number" value={form.property_id}
-            onChange={e => set("property_id", e.target.value)}
-            disabled={!!initial} placeholder="42" />
+        <Field label="Property" required>
+          <select 
+            className="form-select" 
+            value={form.property_id}
+            onChange={e => {
+              set("property_id", e.target.value);
+              set("listing_id", "");
+            }}
+            disabled={!!initial || loadingProps}
+          >
+            <option value="">Zgjidh një property...</option>
+            {properties.map(prop => (
+              <option key={prop.id} value={prop.id}>
+                {prop.title || prop.address || `Property #${prop.id}`}
+              </option>
+            ))}
+          </select>
         </Field>
-        <Field label="Listing ID">
-          <input className="form-input" type="number" value={form.listing_id}
-            onChange={e => set("listing_id", e.target.value)} placeholder="(opcional)" />
+        <Field label="Listing (opcional)">
+          <select 
+            className="form-select" 
+            value={form.listing_id}
+            onChange={e => set("listing_id", e.target.value)}
+            disabled={!form.property_id || loadingListings}
+          >
+            <option value="">-- Pa listing --</option>
+            {activeListings.map(listing => (
+              <option key={listing.id} value={listing.id}>
+                {listing.title || `Listing #${listing.id}`} - {listing.price}€/{listing.price_period?.toLowerCase()}
+              </option>
+            ))}
+          </select>
+          {form.property_id && activeListings.length === 0 && !loadingListings && (
+            <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+              Nuk ka listings aktive për këtë property
+            </p>
+          )}
         </Field>
       </Row2>
       <Field label="Client ID" required>
         <input className="form-input" type="number" value={form.client_id}
           onChange={e => set("client_id", e.target.value)}
-          disabled={!!initial} placeholder="ID e klientit" />
+          placeholder="ID e klientit" />
       </Field>
       <Row2>
         <Field label="Data fillimit" required>
@@ -305,6 +394,7 @@ function ContractDetailModal({ contract, onClose, onEdit, onStatusChange }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
         {[
           { label: "Property ID",   value: `#${contract.property_id}` },
+          { label: "Listing ID",    value: contract.listing_id ? `#${contract.listing_id}` : "—" },
           { label: "Client ID",     value: `#${contract.client_id}` },
           { label: "Agjent ID",     value: contract.agent_id ? `#${contract.agent_id}` : "—" },
           { label: "Statusi",       value: <StatusBadge status={contract.status} /> },
@@ -354,7 +444,7 @@ function ContractDetailModal({ contract, onClose, onEdit, onStatusChange }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function AgentContracts() {
   const { user } = useContext(AuthContext);
-  const [tab, setTab] = useState("my");   // "my" | "all" | "expiring"
+  const [tab, setTab] = useState("my");
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -426,7 +516,6 @@ export default function AgentContracts() {
         </button>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e8edf4",
         marginBottom: 20, paddingBottom: 0 }}>
         {tabs.map(t => (
@@ -443,7 +532,6 @@ export default function AgentContracts() {
         ))}
       </div>
 
-      {/* Table */}
       <div className="card">
         <div className="card__header">
           <h2 className="card__title">

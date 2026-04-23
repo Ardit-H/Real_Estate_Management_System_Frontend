@@ -138,12 +138,33 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
     min_lease_months: initial?.min_lease_months ?? 12,
     status:           initial?.status           ?? "ACTIVE",
   });
+  
+  const [properties, setProperties] = useState([]);
+  const [loadingProps, setLoadingProps] = useState(false);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // Fetch active properties for dropdown
+  useEffect(() => {
+    if (!initial) {
+      const fetchProperties = async () => {
+        setLoadingProps(true);
+        try {
+          const res = await api.get("/api/properties?status=ACTIVE&size=100");
+          setProperties(res.data.content || []);
+        } catch (err) {
+          console.error("Gabim gjatë ngarkimit të properties", err);
+        } finally {
+          setLoadingProps(false);
+        }
+      };
+      fetchProperties();
+    }
+  }, [initial]);
+
   const handleSubmit = async () => {
     if (!form.property_id || !form.price) {
-      notify("Property ID dhe çmimi janë të detyrueshme", "error");
+      notify("Property dhe çmimi janë të detyrueshme", "error");
       return;
     }
     setSaving(true);
@@ -178,10 +199,24 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
     <Modal title={initial ? `Edit Listing #${initial.id}` : "New Rental Listing"}
       onClose={onClose} wide>
       <Row2>
-        <Field label="Property ID" required>
-          <input className="form-input" type="number" value={form.property_id}
-            onChange={e => set("property_id", e.target.value)}
-            disabled={!!initial} placeholder="42" />
+        <Field label="Property" required>
+          {initial ? (
+            <input className="form-input" type="number" value={form.property_id} disabled />
+          ) : (
+            <select 
+              className="form-select" 
+              value={form.property_id}
+              onChange={e => set("property_id", e.target.value)}
+              disabled={loadingProps}
+            >
+              <option value="">Zgjidh një property...</option>
+              {properties.map(prop => (
+                <option key={prop.id} value={prop.id}>
+                  #{prop.id} - {prop.title || prop.address || "Pa titull"}
+                </option>
+              ))}
+            </select>
+          )}
         </Field>
         <Field label="Titull">
           <input className="form-input" value={form.title}
