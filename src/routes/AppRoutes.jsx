@@ -25,6 +25,7 @@ import ClientContrats from "../pages/client/MyContracts";
 import ClientPayments from "../pages/client/MyPayments";
 import ClientApplications from "../pages/client/MyApplications";
 import SavedProperties from "../pages/client/SavedProperties";
+import ClientProfile from "../pages/client/ClientProfile";
 
 export default function AppRoutes() {
     return (
@@ -40,6 +41,7 @@ export default function AppRoutes() {
     <Route path="/client/mypayments" element={<ClientPayments/>}/>
     <Route path="/client/myapplications" element={<ClientLeads/>}/>
     <Route path="/client/savedproperties" element={<SavedProperties/>}/>
+    <Route path="/client/profile" element={<ClientProfile/>}/>
     
     
 
