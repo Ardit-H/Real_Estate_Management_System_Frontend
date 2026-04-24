@@ -132,6 +132,8 @@ function Modal({ title, onClose, children, wide = false }) {
 
 // ─── Create Payment Modal ─────────────────────────────────────────────────────
 function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
+  const [contracts, setContracts] = useState([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
   const [form, setForm] = useState({
     contract_id:    contractId || "",
     amount:         "",
@@ -144,9 +146,25 @@ function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // Fetch contracts for dropdown
+  useEffect(() => {
+    const fetchContracts = async () => {
+      setLoadingContracts(true);
+      try {
+        const res = await api.get("/api/contracts/lease?page=0&size=100");
+        setContracts(res.data.content || []);
+      } catch (err) {
+        console.error("Gabim gjatë ngarkimit të kontratave", err);
+      } finally {
+        setLoadingContracts(false);
+      }
+    };
+    fetchContracts();
+  }, []);
+
   const handleSubmit = async () => {
     if (!form.contract_id || !form.amount || !form.due_date) {
-      notify("Contract ID, shuma dhe due date janë të detyrueshme", "error");
+      notify("Kontrata, shuma dhe due date janë të detyrueshme", "error");
       return;
     }
     setSaving(true);
@@ -168,12 +186,27 @@ function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
     }
   };
 
+  // Get contract display text
+  const getContractDisplay = (contract) => {
+    return `#${contract.id} - Client #${contract.client_id} - ${fmtMoney(contract.rent)}`;
+  };
+
   return (
     <Modal title="New Lease Payment" onClose={onClose}>
-      <Field label="Contract ID" required>
-        <input className="form-input" type="number" value={form.contract_id}
+      <Field label="Kontrata" required>
+        <select 
+          className="form-select" 
+          value={form.contract_id}
           onChange={e => set("contract_id", e.target.value)}
-          placeholder="ID e kontratës" />
+          disabled={loadingContracts}
+        >
+          <option value="">Zgjidh një kontratë...</option>
+          {contracts.map(contract => (
+            <option key={contract.id} value={contract.id}>
+              {getContractDisplay(contract)}
+            </option>
+          ))}
+        </select>
       </Field>
       <Row2>
         <Field label="Shuma" required>
@@ -284,11 +317,13 @@ function MarkPaidModal({ payment, onClose, onSuccess, notify }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function AgentPayments() {
   const [tab, setTab] = useState("contract");  // "contract" | "status" | "overdue"
-  const [contractId, setContractId] = useState("");
+  const [selectedContractId, setSelectedContractId] = useState("");
+  const [contracts, setContracts] = useState([]);
   const [statusFilter, setStatusFilter] = useState("PENDING");
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingContracts, setLoadingContracts] = useState(false);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -299,19 +334,38 @@ export default function AgentPayments() {
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
 
-  // ── Fetch revenue once ────────────────────────────────────────────────────────
+  // Fetch all contracts for dropdown
+  useEffect(() => {
+    const fetchContracts = async () => {
+      setLoadingContracts(true);
+      try {
+        const res = await api.get("/api/contracts/lease?page=0&size=100");
+        setContracts(res.data.content || []);
+      } catch (err) {
+        console.error("Gabim gjatë ngarkimit të kontratave", err);
+      } finally {
+        setLoadingContracts(false);
+      }
+    };
+    fetchContracts();
+  }, []);
+
+  // Fetch revenue once
   useEffect(() => {
     api.get("/api/payments/revenue").then(r => setRevenue(r.data)).catch(() => {});
   }, []);
 
-  // ── Fetch by contract ─────────────────────────────────────────────────────────
-  const fetchByContract = async () => {
-    if (!contractId) { notify("Shkruaj Contract ID", "error"); return; }
+  // Fetch by contract
+  const fetchByContract = useCallback(async () => {
+    if (!selectedContractId) { 
+      notify("Zgjidh një kontratë", "error"); 
+      return; 
+    }
     setLoading(true);
     try {
       const [listRes, sumRes] = await Promise.all([
-        api.get(`/api/payments/contract/${contractId}`),
-        api.get(`/api/payments/contract/${contractId}/summary`),
+        api.get(`/api/payments/contract/${selectedContractId}`),
+        api.get(`/api/payments/contract/${selectedContractId}/summary`),
       ]);
       setPayments(Array.isArray(listRes.data) ? listRes.data : []);
       setSummary(sumRes.data);
@@ -321,9 +375,9 @@ export default function AgentPayments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedContractId, notify]);
 
-  // ── Fetch by status ───────────────────────────────────────────────────────────
+  // Fetch by status
   const fetchByStatus = useCallback(async () => {
     if (tab !== "status") return;
     setLoading(true);
@@ -339,7 +393,7 @@ export default function AgentPayments() {
     }
   }, [tab, statusFilter, page, notify]);
 
-  // ── Fetch overdue ─────────────────────────────────────────────────────────────
+  // Fetch overdue
   const fetchOverdue = useCallback(async () => {
     if (tab !== "overdue") return;
     setLoading(true);
@@ -358,14 +412,33 @@ export default function AgentPayments() {
   useEffect(() => {
     if (tab === "status") fetchByStatus();
     if (tab === "overdue") fetchOverdue();
-    if (tab === "contract") { setPayments([]); setSummary(null); }
-  }, [tab, fetchByStatus, fetchOverdue]);
+    if (tab === "contract") { 
+      if (selectedContractId) {
+        fetchByContract();
+      } else {
+        setPayments([]); 
+        setSummary(null);
+      }
+    }
+  }, [tab, fetchByStatus, fetchOverdue, fetchByContract, selectedContractId]);
 
-  // ── Mark as paid success ──────────────────────────────────────────────────────
+  // Handle contract selection change
+  const handleContractChange = (e) => {
+    const value = e.target.value;
+    setSelectedContractId(value);
+    if (value) {
+      // Will trigger fetch via useEffect when selectedContractId changes and tab is "contract"
+    } else {
+      setPayments([]);
+      setSummary(null);
+    }
+  };
+
+  // Mark as paid success
   const handleMarkPaidSuccess = () => {
     setMarkPaidTarget(null);
     notify("Pagesa u shënua si PAID");
-    if (tab === "contract") fetchByContract();
+    if (tab === "contract" && selectedContractId) fetchByContract();
     else if (tab === "status") fetchByStatus();
     else fetchOverdue();
   };
@@ -377,6 +450,11 @@ export default function AgentPayments() {
   ];
 
   const overdueCount = payments.filter(p => isOverdue(p)).length;
+
+  // Get contract display text for dropdown
+  const getContractDisplay = (contract) => {
+    return `#${contract.id} - Client #${contract.client_id} - ${fmtMoney(contract.rent)}`;
+  };
 
   return (
     <MainLayout role="agent">
@@ -468,13 +546,20 @@ export default function AgentPayments() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {tab === "contract" && (
             <>
-              <input className="form-input" type="number"
-                style={{ height: 34, padding: "0 10px", fontSize: 13, width: 140 }}
-                placeholder="Contract ID..."
-                value={contractId}
-                onChange={e => setContractId(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && fetchByContract()} />
-              <button className="btn btn--secondary btn--sm" onClick={fetchByContract}>Load</button>
+              <select 
+                className="form-select"
+                style={{ height: 34, padding: "0 10px", fontSize: 13, width: 260 }}
+                value={selectedContractId}
+                onChange={handleContractChange}
+                disabled={loadingContracts}
+              >
+                <option value="">-- Zgjidh një kontratë --</option>
+                {contracts.map(contract => (
+                  <option key={contract.id} value={contract.id}>
+                    {getContractDisplay(contract)}
+                  </option>
+                ))}
+              </select>
             </>
           )}
           {tab === "status" && (
@@ -541,8 +626,8 @@ export default function AgentPayments() {
       <div className="card">
         <div className="card__header">
           <h2 className="card__title">
-            {tab === "contract" && contractId ? `Pagesat — Kontratë #${contractId}` : ""}
-            {tab === "contract" && !contractId ? "Pagesat" : ""}
+            {tab === "contract" && selectedContractId ? `Pagesat — Kontratë #${selectedContractId}` : ""}
+            {tab === "contract" && !selectedContractId ? "Pagesat" : ""}
             {tab === "status"   ? `Pagesat — ${statusFilter}` : ""}
             {tab === "overdue"  ? "Pagesat me Vonesë" : ""}
           </h2>
@@ -558,8 +643,8 @@ export default function AgentPayments() {
           <EmptyState
             icon={tab === "contract" ? "💳" : tab === "overdue" ? "✅" : "💳"}
             text={
-              tab === "contract" && !contractId ? "Shkruaj Contract ID dhe kliko Load" :
-              tab === "contract" && contractId  ? "Nuk ka pagesa për këtë kontratë" :
+              tab === "contract" && !selectedContractId ? "Zgjidh një kontratë nga lista" :
+              tab === "contract" && selectedContractId  ? "Nuk ka pagesa për këtë kontratë" :
               tab === "overdue"                 ? "Nuk ka pagesa me vonesë 🎉" :
               `Nuk ka pagesa me status ${statusFilter}`
             }
@@ -635,12 +720,14 @@ export default function AgentPayments() {
 
       {createOpen && (
         <CreatePaymentModal
-          contractId={contractId || ""}
+          contractId={selectedContractId || ""}
           onClose={() => setCreateOpen(false)}
           onSuccess={() => {
             setCreateOpen(false);
             notify("Pagesa u krijua");
-            if (contractId) fetchByContract();
+            if (tab === "contract" && selectedContractId) fetchByContract();
+            else if (tab === "status") fetchByStatus();
+            else fetchOverdue();
           }}
           notify={notify}
         />

@@ -220,9 +220,11 @@ function AppDetailModal({ app, onClose, onReview }) {
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function AgentRentalApplications() {
-  const [listingId, setListingId] = useState("");
+  const [selectedListingId, setSelectedListingId] = useState("");
+  const [listings, setListings] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingListings, setLoadingListings] = useState(true);
   const [selectedApp, setSelectedApp] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -237,16 +239,46 @@ export default function AgentRentalApplications() {
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
 
-  const fetchApplications = async () => {
-    if (!listingId) { notify("Shkruaj Listing ID", "error"); return; }
+  // Fetch all rental listings on mount
+  useEffect(() => {
+    const fetchListings = async () => {
+      setLoadingListings(true);
+      try {
+        const res = await api.get("/api/rentals/listings?page=0&size=100&sortBy=createdAt&sortDir=desc");
+        setListings(res.data.content || []);
+      } catch (err) {
+        console.error("Gabim gjatë ngarkimit të listings", err);
+      } finally {
+        setLoadingListings(false);
+      }
+    };
+    fetchListings();
+  }, []);
+
+  const fetchApplications = async (listingId) => {
+    if (!listingId) return;
     setLoading(true);
     try {
       const res = await api.get(`/api/rentals/applications/listing/${listingId}`);
       setApplications(Array.isArray(res.data) ? res.data : []);
+      if (res.data.length === 0) {
+        notify("Nuk ka aplikime për këtë listing", "info");
+      }
     } catch {
-      notify("Gabim — listing nuk u gjet ose nuk ka aplikime", "error");
+      notify("Gabim — nuk mund të ngarkohen aplikimet", "error");
+      setApplications([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleListingChange = (e) => {
+    const value = e.target.value;
+    setSelectedListingId(value);
+    if (value) {
+      fetchApplications(value);
+    } else {
+      setApplications([]);
     }
   };
 
@@ -266,6 +298,11 @@ export default function AgentRentalApplications() {
     } catch (err) {
       notify(err.response?.data?.message || "Gabim", "error");
     }
+  };
+
+  const getListingDisplayText = (listing) => {
+    const title = listing.title || `Property #${listing.property_id}`;
+    return `${title}`;
   };
 
   const statCards = [
@@ -289,30 +326,29 @@ export default function AgentRentalApplications() {
         </div>
       </div>
 
-      {/* Search bar */}
+      {/* Dropdown selector */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ padding: "18px 20px", display: "flex", gap: 12, alignItems: "center" }}>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Listing ID</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="form-input" type="number"
-                style={{ width: 160, height: 36 }}
-                placeholder="ID e listing..."
-                value={listingId}
-                onChange={e => setListingId(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && fetchApplications()} />
-              <button className="btn btn--primary" onClick={fetchApplications}>
-                Shiko aplikimet
-              </button>
-            </div>
-          </div>
-          <p style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 20 }}>
-            Shkruaj ID-në e listingut dhe kliko butonin për të parë aplikimet
-          </p>
+        <div style={{ padding: "18px 20px" }}>
+          <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Zgjidh Rental Listing</p>
+          <select
+            className="form-select"
+            value={selectedListingId}
+            onChange={handleListingChange}
+            disabled={loadingListings}
+            style={{ width: "100%", maxWidth: 400 }}
+          >
+            <option value="">-- Zgjidh një listing --</option>
+            {listings.map(listing => (
+              <option key={listing.id} value={listing.id}>
+                {getListingDisplayText(listing)}
+              </option>
+            ))}
+          </select>
+          {loadingListings && <div style={{ marginTop: 8 }}><Loader /></div>}
         </div>
       </div>
 
-      {/* Stats — show only after loading */}
+      {/* Stats — show only when there are applications */}
       {applications.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)",
           gap: 14, marginBottom: 20 }}>
@@ -329,15 +365,17 @@ export default function AgentRentalApplications() {
       <div className="card">
         <div className="card__header">
           <h2 className="card__title">
-            {listingId
-              ? `Aplikimet për Listing #${listingId}`
+            {selectedListingId && listings.find(l => l.id == selectedListingId)
+              ? `Aplikimet për: ${listings.find(l => l.id == selectedListingId)?.title || `Listing #${selectedListingId}`}`
               : "Aplikimet"}
           </h2>
         </div>
 
         {loading ? <Loader /> : applications.length === 0 ? (
-          <EmptyState icon="📝"
-            text={listingId ? "Nuk ka aplikime për këtë listing" : "Shkruaj Listing ID për të shikuar aplikimet"} />
+          <EmptyState 
+            icon="📝"
+            text={selectedListingId ? "Nuk ka aplikime për këtë listing" : "Zgjidh një listing nga lista për të parë aplikimet"} 
+          />
         ) : (
           <div className="table-wrap">
             <table className="table">
