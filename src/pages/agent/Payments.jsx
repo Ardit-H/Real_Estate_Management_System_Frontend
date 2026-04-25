@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import MainLayout from "../../components/layout/Layout";
 import api from "../../api/axios";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const PAYMENT_STATUSES = ["PENDING", "PAID", "FAILED", "OVERDUE", "REFUNDED"];
 const PAYMENT_TYPES    = ["RENT", "DEPOSIT", "LATE_FEE", "MAINTENANCE"];
 const PAYMENT_METHODS  = ["BANK_TRANSFER", "CASH", "CARD", "CHECK"];
@@ -16,33 +16,60 @@ const STATUS_STYLE = {
   REFUNDED: { bg: "#f5f3ff", color: "#7c3aed" },
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate  = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
-const fmtDT    = (d) => d ? new Date(d).toLocaleString("sq-AL", {
-  day: "2-digit", month: "2-digit", year: "numeric",
-  hour: "2-digit", minute: "2-digit" }) : "—";
-const fmtMoney = (v, cur = "EUR") =>
-  v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
+const fmtMoney = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
+const today    = () => new Date().toISOString().split("T")[0];
 
 function isOverdue(payment) {
   if (!payment.due_date || payment.status !== "PENDING") return false;
   return new Date(payment.due_date) < new Date();
 }
 
+// ─── Validim për CreatePaymentModal ──────────────────────────────────────────
+function validatePaymentForm(form, notify) {
+  if (!form.contract_id || isNaN(Number(form.contract_id)) || Number(form.contract_id) <= 0) {
+    notify("Contract ID duhet të jetë numër pozitiv", "error"); return false;
+  }
+  if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) {
+    notify("Shuma duhet të jetë më e madhe se 0", "error"); return false;
+  }
+  if (Number(form.amount) > 999999999) {
+    notify("Shuma është shumë e madhe", "error"); return false;
+  }
+  if (!form.due_date) {
+    notify("Due date është e detyrueshme", "error"); return false;
+  }
+  if (form.notes && form.notes.length > 500) {
+    notify("Shënimet nuk mund të kalojnë 500 karaktere", "error"); return false;
+  }
+  return true;
+}
+
+// ─── Validim për MarkPaidModal ────────────────────────────────────────────────
+function validateMarkPaid(form, notify) {
+  if (!form.paid_date) {
+    notify("Data e pagesës është e detyrueshme", "error"); return false;
+  }
+  if (form.paid_date > today()) {
+    notify("Data e pagesës nuk mund të jetë në të ardhmen", "error"); return false;
+  }
+  if (form.transaction_ref && form.transaction_ref.length > 100) {
+    notify("Transaction Ref nuk mund të kalojë 100 karaktere", "error"); return false;
+  }
+  return true;
+}
+
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
   return (
-    <div style={{
-      position: "fixed", bottom: 28, right: 28, zIndex: 9999,
+    <div style={{ position: "fixed", bottom: 28, right: 28, zIndex: 9999,
       background: type === "error" ? "#fee2e2" : "#ecfdf5",
       color: type === "error" ? "#b91c1c" : "#047857",
       padding: "12px 20px", borderRadius: 10, fontSize: 13.5, fontWeight: 500,
-      boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340,
-    }}>{msg}</div>
+      boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340 }}>{msg}</div>
   );
 }
-
 function Loader() {
   return (
     <div style={{ textAlign: "center", padding: "52px 0" }}>
@@ -52,7 +79,6 @@ function Loader() {
     </div>
   );
 }
-
 function EmptyState({ icon, text }) {
   return (
     <div style={{ textAlign: "center", padding: "52px 20px", color: "#94a3b8" }}>
@@ -61,7 +87,6 @@ function EmptyState({ icon, text }) {
     </div>
   );
 }
-
 function StatusBadge({ status }) {
   const s = STATUS_STYLE[status] || { bg: "#f1f5f9", color: "#64748b" };
   return (
@@ -71,7 +96,6 @@ function StatusBadge({ status }) {
     </span>
   );
 }
-
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
   return (
@@ -87,22 +111,20 @@ function Pagination({ page, totalPages, onChange }) {
     </div>
   );
 }
-
-function Field({ label, children, required }) {
+function Field({ label, children, required, hint }) {
   return (
     <div className="form-group">
       <label className="form-label">
         {label}{required && <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>}
       </label>
       {children}
+      {hint && <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 4 }}>{hint}</p>}
     </div>
   );
 }
-
 function Row2({ children }) {
   return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>{children}</div>;
 }
-
 function Modal({ title, onClose, children, wide = false }) {
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -131,11 +153,9 @@ function Modal({ title, onClose, children, wide = false }) {
 }
 
 // ─── Create Payment Modal ─────────────────────────────────────────────────────
-function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
-  const [contracts, setContracts] = useState([]);
-  const [loadingContracts, setLoadingContracts] = useState(false);
+function CreatePaymentModal({ defaultContractId, onClose, onSuccess, notify }) {
   const [form, setForm] = useState({
-    contract_id:    contractId || "",
+    contract_id:    defaultContractId || "",
     amount:         "",
     currency:       "EUR",
     payment_type:   "RENT",
@@ -146,27 +166,8 @@ function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  // Fetch contracts for dropdown
-  useEffect(() => {
-    const fetchContracts = async () => {
-      setLoadingContracts(true);
-      try {
-        const res = await api.get("/api/contracts/lease?page=0&size=100");
-        setContracts(res.data.content || []);
-      } catch (err) {
-        console.error("Gabim gjatë ngarkimit të kontratave", err);
-      } finally {
-        setLoadingContracts(false);
-      }
-    };
-    fetchContracts();
-  }, []);
-
   const handleSubmit = async () => {
-    if (!form.contract_id || !form.amount || !form.due_date) {
-      notify("Kontrata, shuma dhe due date janë të detyrueshme", "error");
-      return;
-    }
+    if (!validatePaymentForm(form, notify)) return;
     setSaving(true);
     try {
       await api.post("/api/payments", {
@@ -176,7 +177,7 @@ function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
         payment_type:   form.payment_type,
         due_date:       form.due_date,
         payment_method: form.payment_method || null,
-        notes:          form.notes || null,
+        notes:          form.notes          || null,
       });
       onSuccess();
     } catch (err) {
@@ -186,31 +187,15 @@ function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
     }
   };
 
-  // Get contract display text
-  const getContractDisplay = (contract) => {
-    return `#${contract.id} - Client #${contract.client_id} - ${fmtMoney(contract.rent)}`;
-  };
-
   return (
     <Modal title="New Lease Payment" onClose={onClose}>
-      <Field label="Kontrata" required>
-        <select 
-          className="form-select" 
-          value={form.contract_id}
-          onChange={e => set("contract_id", e.target.value)}
-          disabled={loadingContracts}
-        >
-          <option value="">Zgjidh një kontratë...</option>
-          {contracts.map(contract => (
-            <option key={contract.id} value={contract.id}>
-              {getContractDisplay(contract)}
-            </option>
-          ))}
-        </select>
+      <Field label="Contract ID" required hint="ID numerike e kontratës">
+        <input className="form-input" type="number" min="1" value={form.contract_id}
+          onChange={e => set("contract_id", e.target.value)} placeholder="ID e kontratës" />
       </Field>
       <Row2>
-        <Field label="Shuma" required>
-          <input className="form-input" type="number" value={form.amount}
+        <Field label="Shuma" required hint="Duhet të jetë > 0">
+          <input className="form-input" type="number" min="0.01" step="0.01" value={form.amount}
             onChange={e => set("amount", e.target.value)} placeholder="450" />
         </Field>
         <Field label="Monedha">
@@ -238,9 +223,10 @@ function CreatePaymentModal({ contractId, onClose, onSuccess, notify }) {
           {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
         </select>
       </Field>
-      <Field label="Shënime">
+      <Field label="Shënime" hint="Max 500 karaktere">
         <input className="form-input" value={form.notes}
-          onChange={e => set("notes", e.target.value)} placeholder="(opcional)" />
+          onChange={e => set("notes", e.target.value)}
+          placeholder="(opcional)" maxLength={500} />
       </Field>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 }}>
         <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
@@ -257,12 +243,13 @@ function MarkPaidModal({ payment, onClose, onSuccess, notify }) {
   const [form, setForm] = useState({
     payment_method:  payment.payment_method || "BANK_TRANSFER",
     transaction_ref: "",
-    paid_date:       new Date().toISOString().split("T")[0],
+    paid_date:       today(),
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSubmit = async () => {
+    if (!validateMarkPaid(form, notify)) return;
     setSaving(true);
     try {
       await api.patch(`/api/payments/${payment.id}/pay`, {
@@ -292,14 +279,15 @@ function MarkPaidModal({ payment, onClose, onSuccess, notify }) {
         </select>
       </Field>
       <Row2>
-        <Field label="Transaction Ref">
+        <Field label="Transaction Ref" hint="Max 100 karaktere">
           <input className="form-input" value={form.transaction_ref}
             onChange={e => set("transaction_ref", e.target.value)}
-            placeholder="TXN-12345" />
+            placeholder="TXN-12345" maxLength={100} />
         </Field>
-        <Field label="Data e pagesës">
+        <Field label="Data e pagesës" required hint="Nuk mund të jetë në të ardhmen">
           <input className="form-input" type="date" value={form.paid_date}
-            onChange={e => set("paid_date", e.target.value)} />
+            onChange={e => set("paid_date", e.target.value)}
+            max={today()} />
         </Field>
       </Row2>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 }}>
@@ -313,59 +301,44 @@ function MarkPaidModal({ payment, onClose, onSuccess, notify }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════════
 export default function AgentPayments() {
-  const [tab, setTab] = useState("contract");  // "contract" | "status" | "overdue"
-  const [selectedContractId, setSelectedContractId] = useState("");
-  const [contracts, setContracts] = useState([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const fromContractId = location.state?.fromContractId || null;
+
+  const [tab, setTab]               = useState("contract");
+  const [contractId, setContractId] = useState(fromContractId || "");
   const [statusFilter, setStatusFilter] = useState("PENDING");
-  const [payments, setPayments] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingContracts, setLoadingContracts] = useState(false);
-  const [page, setPage] = useState(0);
+  const [payments, setPayments]     = useState([]);
+  const [summary, setSummary]       = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [page, setPage]             = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [markPaidTarget, setMarkPaidTarget] = useState(null);
-  const [toast, setToast] = useState(null);
-  const [revenue, setRevenue] = useState(null);
+  const [toast, setToast]           = useState(null);
+  const [revenue, setRevenue]       = useState(null);
 
+  const autoLoadedRef = useRef(false);
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
 
-  // Fetch all contracts for dropdown
-  useEffect(() => {
-    const fetchContracts = async () => {
-      setLoadingContracts(true);
-      try {
-        const res = await api.get("/api/contracts/lease?page=0&size=100");
-        setContracts(res.data.content || []);
-      } catch (err) {
-        console.error("Gabim gjatë ngarkimit të kontratave", err);
-      } finally {
-        setLoadingContracts(false);
-      }
-    };
-    fetchContracts();
-  }, []);
-
-  // Fetch revenue once
   useEffect(() => {
     api.get("/api/payments/revenue").then(r => setRevenue(r.data)).catch(() => {});
   }, []);
 
-  // Fetch by contract
-  const fetchByContract = useCallback(async () => {
-    if (!selectedContractId) { 
-      notify("Zgjidh një kontratë", "error"); 
-      return; 
+  const fetchByContract = useCallback(async (cid) => {
+    const id = cid != null ? String(cid) : contractId;
+    if (!id) { notify("Shkruaj Contract ID", "error"); return; }
+    if (isNaN(Number(id)) || Number(id) <= 0) {
+      notify("Contract ID duhet të jetë numër pozitiv", "error"); return;
     }
     setLoading(true);
     try {
       const [listRes, sumRes] = await Promise.all([
-        api.get(`/api/payments/contract/${selectedContractId}`),
-        api.get(`/api/payments/contract/${selectedContractId}/summary`),
+        api.get(`/api/payments/contract/${id}`),
+        api.get(`/api/payments/contract/${id}/summary`),
       ]);
       setPayments(Array.isArray(listRes.data) ? listRes.data : []);
       setSummary(sumRes.data);
@@ -375,11 +348,16 @@ export default function AgentPayments() {
     } finally {
       setLoading(false);
     }
-  }, [selectedContractId, notify]);
+  }, [contractId, notify]);
 
-  // Fetch by status
+  useEffect(() => {
+    if (fromContractId && !autoLoadedRef.current) {
+      autoLoadedRef.current = true;
+      fetchByContract(fromContractId);
+    }
+  }, [fromContractId, fetchByContract]);
+
   const fetchByStatus = useCallback(async () => {
-    if (tab !== "status") return;
     setLoading(true);
     try {
       const res = await api.get(`/api/payments/status/${statusFilter}?page=${page}&size=15`);
@@ -391,98 +369,76 @@ export default function AgentPayments() {
     } finally {
       setLoading(false);
     }
-  }, [tab, statusFilter, page, notify]);
+  }, [statusFilter, page, notify]);
 
-  // Fetch overdue
   const fetchOverdue = useCallback(async () => {
-    if (tab !== "overdue") return;
     setLoading(true);
     try {
       const res = await api.get("/api/payments/overdue");
       setPayments(Array.isArray(res.data) ? res.data : []);
-      setTotalPages(1);
-      setSummary(null);
+      setTotalPages(1); setSummary(null);
     } catch {
       notify("Gabim gjatë ngarkimit", "error");
     } finally {
       setLoading(false);
     }
-  }, [tab, notify]);
+  }, [notify]);
 
   useEffect(() => {
-    if (tab === "status") fetchByStatus();
+    if (tab === "status")  fetchByStatus();
     if (tab === "overdue") fetchOverdue();
-    if (tab === "contract") { 
-      if (selectedContractId) {
-        fetchByContract();
-      } else {
-        setPayments([]); 
-        setSummary(null);
-      }
-    }
-  }, [tab, fetchByStatus, fetchOverdue, fetchByContract, selectedContractId]);
+    if (tab === "contract" && !fromContractId) { setPayments([]); setSummary(null); }
+  }, [tab, fetchByStatus, fetchOverdue, fromContractId]);
 
-  // Handle contract selection change
-  const handleContractChange = (e) => {
-    const value = e.target.value;
-    setSelectedContractId(value);
-    if (value) {
-      // Will trigger fetch via useEffect when selectedContractId changes and tab is "contract"
-    } else {
-      setPayments([]);
-      setSummary(null);
-    }
-  };
-
-  // Mark as paid success
   const handleMarkPaidSuccess = () => {
-    setMarkPaidTarget(null);
-    notify("Pagesa u shënua si PAID");
-    if (tab === "contract" && selectedContractId) fetchByContract();
+    setMarkPaidTarget(null); notify("Pagesa u shënua si PAID");
+    if (tab === "contract")    fetchByContract();
     else if (tab === "status") fetchByStatus();
-    else fetchOverdue();
+    else                       fetchOverdue();
   };
 
   const tabs = [
-    { id: "contract", label: "By Contract",    icon: "📋" },
-    { id: "status",   label: "By Status",      icon: "🔍" },
-    { id: "overdue",  label: "Overdue",        icon: "🔴" },
+    { id: "contract", label: "By Contract", icon: "📋" },
+    { id: "status",   label: "By Status",   icon: "🔍" },
+    { id: "overdue",  label: "Overdue",     icon: "🔴" },
   ];
-
-  const overdueCount = payments.filter(p => isOverdue(p)).length;
-
-  // Get contract display text for dropdown
-  const getContractDisplay = (contract) => {
-    return `#${contract.id} - Client #${contract.client_id} - ${fmtMoney(contract.rent)}`;
-  };
 
   return (
     <MainLayout role="agent">
       <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
       `}</style>
 
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Lease Payments</h1>
-          <p className="page-subtitle">Menaxho pagesat e qirasë dhe gjurmo statusin</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {fromContractId && (
+            <button className="btn btn--ghost btn--sm"
+              onClick={() => navigate("/agent/contracts")}
+              style={{ color: "#6366f1", border: "1px solid #c7d7fe" }}>
+              ← Kontratat
+            </button>
+          )}
+          <div>
+            <h1 className="page-title">Lease Payments</h1>
+            <p className="page-subtitle">
+              {fromContractId ? `Pagesat e Kontratës #${fromContractId}` : "Menaxho pagesat e qirasë dhe gjurmo statusin"}
+            </p>
+          </div>
         </div>
-        <button className="btn btn--primary" onClick={() => setCreateOpen(true)}>
-          + New Payment
-        </button>
+        <button className="btn btn--primary" onClick={() => setCreateOpen(true)}>+ New Payment</button>
       </div>
 
-      {/* Revenue summary card */}
-      {revenue !== null && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)",
-          gap: 14, marginBottom: 24 }}>
-          <div className="stat-card">
-            <div className="stat-card__label">Total Revenue</div>
-            <div className="stat-card__value" style={{ color: "#059669", fontSize: 22 }}>
-              €{Number(revenue).toLocaleString("de-DE")}
+      {(revenue !== null || summary) && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 24 }}>
+          {revenue !== null && (
+            <div className="stat-card">
+              <div className="stat-card__label">Total Revenue</div>
+              <div className="stat-card__value" style={{ color: "#059669", fontSize: 22 }}>
+                €{Number(revenue).toLocaleString("de-DE")}
+              </div>
             </div>
-          </div>
+          )}
           {summary && (
             <>
               <div className="stat-card">
@@ -494,14 +450,10 @@ export default function AgentPayments() {
               <div className="stat-card">
                 <div className="stat-card__label">Në pritje / Overdue</div>
                 <div className="stat-card__value" style={{
-                  color: (summary.overdue_count || 0) > 0 ? "#dc2626" : "#d97706",
-                  fontSize: 22,
-                }}>
+                  color: (summary.overdue_count || 0) > 0 ? "#dc2626" : "#d97706", fontSize: 22 }}>
                   €{Number(summary.total_pending || 0).toLocaleString("de-DE")}
                   {(summary.overdue_count || 0) > 0 && (
-                    <span style={{ fontSize: 13, marginLeft: 6 }}>
-                      ({summary.overdue_count} overdue)
-                    </span>
+                    <span style={{ fontSize: 13, marginLeft: 6 }}>({summary.overdue_count} overdue)</span>
                   )}
                 </div>
               </div>
@@ -510,7 +462,6 @@ export default function AgentPayments() {
         </div>
       )}
 
-      {/* Overdue alert */}
       {tab === "overdue" && payments.length > 0 && (
         <div style={{ background: "#fff1f2", border: "1px solid #fecdd3",
           borderRadius: 10, padding: "12px 18px", marginBottom: 18,
@@ -519,47 +470,33 @@ export default function AgentPayments() {
         </div>
       )}
 
-      {/* Tabs + filters */}
       <div style={{ display: "flex", alignItems: "center",
         justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e8edf4", paddingBottom: 0 }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e8edf4" }}>
           {tabs.map(t => (
-            <button key={t.id} onClick={() => { setTab(t.id); setPage(0); setPayments([]); setSummary(null); }}
+            <button key={t.id}
+              onClick={() => { setTab(t.id); setPage(0); setPayments([]); setSummary(null); }}
               style={{ padding: "9px 16px", border: "none",
                 borderBottom: tab === t.id ? "2px solid #6366f1" : "2px solid transparent",
-                background: "none",
-                color: tab === t.id ? "#6366f1" : "#64748b",
-                fontWeight: tab === t.id ? 600 : 400,
-                fontSize: 13.5, cursor: "pointer", fontFamily: "inherit",
-                marginBottom: -1, display: "flex", alignItems: "center", gap: 5 }}>
+                background: "none", color: tab === t.id ? "#6366f1" : "#64748b",
+                fontWeight: tab === t.id ? 600 : 400, fontSize: 13.5,
+                cursor: "pointer", fontFamily: "inherit", marginBottom: -1,
+                display: "flex", alignItems: "center", gap: 5 }}>
               {t.icon} {t.label}
-              {t.id === "overdue" && overdueCount > 0 && tab !== "overdue" && (
-                <span style={{ background: "#dc2626", color: "white",
-                  borderRadius: "50%", width: 18, height: 18,
-                  fontSize: 10, display: "inline-flex", alignItems: "center",
-                  justifyContent: "center", fontWeight: 700 }}>{overdueCount}</span>
-              )}
             </button>
           ))}
         </div>
-
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {tab === "contract" && (
             <>
-              <select 
-                className="form-select"
-                style={{ height: 34, padding: "0 10px", fontSize: 13, width: 260 }}
-                value={selectedContractId}
-                onChange={handleContractChange}
-                disabled={loadingContracts}
-              >
-                <option value="">-- Zgjidh një kontratë --</option>
-                {contracts.map(contract => (
-                  <option key={contract.id} value={contract.id}>
-                    {getContractDisplay(contract)}
-                  </option>
-                ))}
-              </select>
+              <input className="form-input" type="number" min="1"
+                style={{ height: 34, padding: "0 10px", fontSize: 13, width: 150 }}
+                placeholder="Contract ID..."
+                value={contractId}
+                onChange={e => setContractId(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && fetchByContract()} />
+              <button className="btn btn--secondary btn--sm"
+                onClick={() => fetchByContract()}>Load</button>
             </>
           )}
           {tab === "status" && (
@@ -573,63 +510,35 @@ export default function AgentPayments() {
         </div>
       </div>
 
-      {/* Summary bar for contract tab */}
       {summary && (
         <div style={{ display: "flex", gap: 16, padding: "14px 20px",
           background: "#f8fafc", borderRadius: 10, border: "1px solid #e8edf4",
           marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <div>
-            <p style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600,
-              textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
-              Total Pagesa
-            </p>
-            <p style={{ fontSize: 20, fontWeight: 600 }}>{summary.total_payments}</p>
-          </div>
-          <div style={{ width: 1, height: 32, background: "#e8edf4" }} />
-          <div>
-            <p style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600,
-              textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
-              Paguar
-            </p>
-            <p style={{ fontSize: 20, fontWeight: 600, color: "#059669" }}>
-              €{Number(summary.total_paid || 0).toLocaleString("de-DE")}
-            </p>
-          </div>
-          <div style={{ width: 1, height: 32, background: "#e8edf4" }} />
-          <div>
-            <p style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600,
-              textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
-              Në Pritje
-            </p>
-            <p style={{ fontSize: 20, fontWeight: 600, color: "#d97706" }}>
-              €{Number(summary.total_pending || 0).toLocaleString("de-DE")}
-            </p>
-          </div>
-          {(summary.overdue_count || 0) > 0 && (
-            <>
-              <div style={{ width: 1, height: 32, background: "#e8edf4" }} />
+          {[
+            { label: "Total Pagesa", value: summary.total_payments },
+            { label: "Paguar",       value: `€${Number(summary.total_paid||0).toLocaleString("de-DE")}`,    color: "#059669" },
+            { label: "Në Pritje",    value: `€${Number(summary.total_pending||0).toLocaleString("de-DE")}`, color: "#d97706" },
+            ...(summary.overdue_count ? [{ label: "Overdue", value: summary.overdue_count, color: "#dc2626" }] : []),
+          ].map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {i > 0 && <div style={{ width: 1, height: 32, background: "#e8edf4" }} />}
               <div>
                 <p style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600,
-                  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
-                  Overdue
-                </p>
-                <p style={{ fontSize: 20, fontWeight: 600, color: "#dc2626" }}>
-                  {summary.overdue_count}
-                </p>
+                  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{s.label}</p>
+                <p style={{ fontSize: 20, fontWeight: 600, color: s.color }}>{s.value}</p>
               </div>
-            </>
-          )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Table */}
       <div className="card">
         <div className="card__header">
           <h2 className="card__title">
-            {tab === "contract" && selectedContractId ? `Pagesat — Kontratë #${selectedContractId}` : ""}
-            {tab === "contract" && !selectedContractId ? "Pagesat" : ""}
-            {tab === "status"   ? `Pagesat — ${statusFilter}` : ""}
-            {tab === "overdue"  ? "Pagesat me Vonesë" : ""}
+            {tab === "contract" && contractId ? `Pagesat — Kontratë #${contractId}` :
+             tab === "contract"               ? "Pagesat" :
+             tab === "status"                 ? `Pagesat — ${statusFilter}` :
+                                               "Pagesat me Vonesë"}
           </h2>
           {payments.length > 0 && (
             <span style={{ background: "#eef2ff", color: "#6366f1",
@@ -640,11 +549,10 @@ export default function AgentPayments() {
         </div>
 
         {loading ? <Loader /> : payments.length === 0 ? (
-          <EmptyState
-            icon={tab === "contract" ? "💳" : tab === "overdue" ? "✅" : "💳"}
+          <EmptyState icon={tab === "overdue" ? "✅" : "💳"}
             text={
-              tab === "contract" && !selectedContractId ? "Zgjidh një kontratë nga lista" :
-              tab === "contract" && selectedContractId  ? "Nuk ka pagesa për këtë kontratë" :
+              tab === "contract" && !contractId ? "Shkruaj Contract ID dhe kliko Load" :
+              tab === "contract" && contractId  ? "Nuk ka pagesa për këtë kontratë" :
               tab === "overdue"                 ? "Nuk ka pagesa me vonesë 🎉" :
               `Nuk ka pagesa me status ${statusFilter}`
             }
@@ -655,21 +563,13 @@ export default function AgentPayments() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Contract</th>
-                    <th>Shuma</th>
-                    <th>Tipi</th>
-                    <th>Due Date</th>
-                    <th>Paid Date</th>
-                    <th>Metoda</th>
-                    <th>Statusi</th>
-                    <th>Veprime</th>
+                    <th>#</th><th>Contract</th><th>Shuma</th><th>Tipi</th>
+                    <th>Due Date</th><th>Paid Date</th><th>Metoda</th><th>Statusi</th><th>Veprime</th>
                   </tr>
                 </thead>
                 <tbody>
                   {payments.map(p => (
-                    <tr key={p.id}
-                      style={{ background: isOverdue(p) ? "#fff9f9" : undefined }}>
+                    <tr key={p.id} style={{ background: isOverdue(p) ? "#fff9f9" : undefined }}>
                       <td style={{ color: "#94a3b8", fontSize: 12 }}>{p.id}</td>
                       <td>
                         <span style={{ background: "#eef2ff", color: "#6366f1",
@@ -685,27 +585,19 @@ export default function AgentPayments() {
                         </span>
                       </td>
                       <td>
-                        <span style={{
-                          fontSize: 12.5,
+                        <span style={{ fontSize: 12.5,
                           color: isOverdue(p) ? "#dc2626" : "#64748b",
-                          fontWeight: isOverdue(p) ? 600 : 400,
-                        }}>
+                          fontWeight: isOverdue(p) ? 600 : 400 }}>
                           {isOverdue(p) ? "⚠️ " : ""}{fmtDate(p.due_date)}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12.5, color: "#64748b" }}>
-                        {fmtDate(p.paid_date)}
-                      </td>
-                      <td style={{ fontSize: 12.5, color: "#64748b" }}>
-                        {p.payment_method || "—"}
-                      </td>
+                      <td style={{ fontSize: 12.5, color: "#64748b" }}>{fmtDate(p.paid_date)}</td>
+                      <td style={{ fontSize: 12.5, color: "#64748b" }}>{p.payment_method || "—"}</td>
                       <td><StatusBadge status={p.status} /></td>
                       <td>
                         {(p.status === "PENDING" || p.status === "OVERDUE") && (
                           <button className="btn btn--primary btn--sm"
-                            onClick={() => setMarkPaidTarget(p)}>
-                            Mark Paid
-                          </button>
+                            onClick={() => setMarkPaidTarget(p)}>Mark Paid</button>
                         )}
                       </td>
                     </tr>
@@ -719,29 +611,15 @@ export default function AgentPayments() {
       </div>
 
       {createOpen && (
-        <CreatePaymentModal
-          contractId={selectedContractId || ""}
+        <CreatePaymentModal defaultContractId={contractId}
           onClose={() => setCreateOpen(false)}
-          onSuccess={() => {
-            setCreateOpen(false);
-            notify("Pagesa u krijua");
-            if (tab === "contract" && selectedContractId) fetchByContract();
-            else if (tab === "status") fetchByStatus();
-            else fetchOverdue();
-          }}
-          notify={notify}
-        />
+          onSuccess={() => { setCreateOpen(false); notify("Pagesa u krijua"); if (contractId) fetchByContract(); }}
+          notify={notify} />
       )}
-
       {markPaidTarget && (
-        <MarkPaidModal
-          payment={markPaidTarget}
-          onClose={() => setMarkPaidTarget(null)}
-          onSuccess={handleMarkPaidSuccess}
-          notify={notify}
-        />
+        <MarkPaidModal payment={markPaidTarget} onClose={() => setMarkPaidTarget(null)}
+          onSuccess={handleMarkPaidSuccess} notify={notify} />
       )}
-
       {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type}
         onDone={() => setToast(null)} />}
     </MainLayout>
