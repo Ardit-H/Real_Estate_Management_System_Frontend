@@ -7,8 +7,16 @@ import api from "../../api/axios";
  
 const SALE_STATUSES   = ["ACTIVE", "SOLD", "PENDING", "CANCELLED"];
 const CONTRACT_STATUSES = ["PENDING", "COMPLETED", "CANCELLED"];
-const PAYMENT_TYPES   = ["FULL", "DEPOSIT", "INSTALLMENT", "COMMISSION"];
+const PAYMENT_TYPES   = ["FULL", "DEPOSIT", "INSTALLMENT", "COMMISSION","AGENT_COMMISSION", "CLIENT_BONUS"];
 const PAYMENT_METHODS = ["BANK_TRANSFER", "CASH", "CARD", "CHECK"];
+const TYPE_COLORS = {
+  FULL:             { bg: "#eef2ff", color: "#6366f1" },
+  DEPOSIT:          { bg: "#fef9c3", color: "#854d0e" },
+  INSTALLMENT:      { bg: "#f1f5f9", color: "#475569" },
+  COMMISSION:       { bg: "#f0fdf4", color: "#166534" },
+  AGENT_COMMISSION: { bg: "#eff6ff", color: "#1d4ed8" },
+  CLIENT_BONUS:     { bg: "#fdf4ff", color: "#7e22ce" },
+};
  
 // ─── Small helpers ────────────────────────────────────────────────────────────
  
@@ -760,6 +768,16 @@ function ContractStatusModal({ contract, onClose, onSuccess, notify }) {
         borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 13,
         color: status === "CANCELLED" ? "#b91c1c" : "#047857",
       }}>
+          {status === "COMPLETED" && (
+          <div style={{
+            background: "#eff6ff", border: "1px solid #bfdbfe",
+            borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+            fontSize: 13, color: "#1e40af",
+          }}>
+            💡 Duke shënuar COMPLETED, sistemi do të krijojë automatikisht
+            pagesat e komisionit (3% e çmimit të shitjes).
+          </div>
+        )}
         {status === "CANCELLED"
           ? "⚠️ Anulimi i kontratës është i pakthyeshëm."
           : "✓ Kontrata do të shënohet si e përfunduar me sukses."}
@@ -897,6 +915,30 @@ function PaymentsSection({ prefill, notify }) {
             )}
           </div>
         )}
+        {payments.some(p => p.payment_type === "AGENT_COMMISSION") && (
+          <>
+            <div style={summaryDivider} />
+            <div style={summaryItem}>
+              <span style={summaryLabel}>Komisioni Agjentit</span>
+              <span style={{ ...summaryVal, color: "#1d4ed8", fontSize: 16 }}>
+                €{payments
+                    .filter(p => p.payment_type === "AGENT_COMMISSION")
+                    .reduce((s, p) => s + Number(p.amount), 0)
+                    .toLocaleString("de-DE")}
+              </span>
+            </div>
+            <div style={summaryDivider} />
+            <div style={summaryItem}>
+              <span style={summaryLabel}>Kompania</span>
+              <span style={{ ...summaryVal, color: "#059669", fontSize: 16 }}>
+                €{payments
+                    .filter(p => p.payment_type === "COMMISSION")
+                    .reduce((s, p) => s + Number(p.amount), 0)
+                    .toLocaleString("de-DE")}
+              </span>
+            </div>
+          </>
+        )}
  
         {!contractId ? (
           <EmptyState icon="💳" text="Shkruaj Contract ID dhe kliko Load për të parë pagesat." />
@@ -910,6 +952,7 @@ function PaymentsSection({ prefill, notify }) {
                   <th>#</th>
                   <th>Amount</th>
                   <th>Type</th>
+                  <th>Recipient</th>
                   <th>Method</th>
                   <th>Paid Date</th>
                   <th>Ref</th>
@@ -918,36 +961,54 @@ function PaymentsSection({ prefill, notify }) {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ color: "#94a3b8", fontSize: 12 }}>{p.id}</td>
-                    <td style={{ fontWeight: 600 }}>{fmtPrice(p.amount, p.currency)}</td>
-                    <td>
-                      <span style={{
-                        background: "#f1f5f9", color: "#475569",
-                        padding: "2px 8px", borderRadius: 20, fontSize: 11.5, fontWeight: 500,
-                      }}>
-                        {p.payment_type}
-                      </span>
-                    </td>
-                    <td className="text-muted">{p.payment_method || "—"}</td>
-                    <td className="text-muted">{fmtDate(p.paid_date)}</td>
-                    <td style={{ fontSize: 12, color: "#94a3b8", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {p.transaction_ref || "—"}
-                    </td>
-                    <td><Badge label={p.status} /></td>
-                    <td>
-                      {p.status === "PENDING" && (
-                        <button
-                          className="btn btn--primary btn--sm"
-                          onClick={() => setPayTarget(p)}
-                        >
-                          Mark Paid
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {payments.map((p) => {
+                  const typeStyle = TYPE_COLORS[p.payment_type] || TYPE_COLORS.FULL;
+                  return (
+                    <tr key={p.id}>
+                      <td style={{ color: "#94a3b8", fontSize: 12 }}>{p.id}</td>
+                      <td style={{ fontWeight: 600 }}>{fmtPrice(p.amount, p.currency)}</td>
+                      <td>
+                        <span style={{
+                          background: typeStyle.bg, color: typeStyle.color,
+                          padding: "2px 8px", borderRadius: 20,
+                          fontSize: 11.5, fontWeight: 500,
+                        }}>
+                          {p.payment_type}
+                        </span>
+                      </td>
+
+                                    <td>
+                        {p.recipient_name ? (
+                          <span style={{ fontSize: 13, color: "#475569" }}>
+                            {p.recipient_type === "AGENT"
+                              ? `👤 ${p.recipient_name}`
+                              : `🏠 ${p.recipient_name}`}
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: 12, color: "#059669", fontWeight: 500,
+                            background: "#ecfdf5", padding: "2px 8px", borderRadius: 20
+                          }}>
+                            🏢 Kompania
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="text-muted">{p.payment_method || "—"}</td>
+                      <td className="text-muted">{fmtDate(p.paid_date)}</td>
+                      <td style={{ fontSize: 12, color: "#94a3b8" }}>{p.transaction_ref || "—"}</td>
+                      <td><Badge label={p.status} /></td>
+                      <td>
+                        {p.status === "PENDING" && (
+                          <button className="btn btn--primary btn--sm"
+                            onClick={() => setPayTarget(p)}>
+                            Mark Paid
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
