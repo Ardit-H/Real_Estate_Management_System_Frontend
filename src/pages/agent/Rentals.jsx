@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/Layout";
 import api from "../../api/axios";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const LISTING_STATUSES = ["ACTIVE", "INACTIVE", "EXPIRED", "RENTED"];
 const PRICE_PERIODS    = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
 const CURRENCIES       = ["EUR", "USD", "ALL"];
@@ -14,11 +14,44 @@ const STATUS_STYLE = {
   RENTED:   { bg: "#eff6ff", color: "#2563eb" },
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmtPrice  = (v, cur = "EUR", period = "MONTHLY") =>
+const fmtPrice = (v, cur = "EUR", period = "MONTHLY") =>
   v != null ? `€${Number(v).toLocaleString("de-DE")} / ${period.toLowerCase()}` : "—";
-const fmtDate   = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
-const fmtMoney  = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
+const fmtDate  = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
+const fmtMoney = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
+
+// ─── Validim qendror për ListingModal ────────────────────────────────────────
+function validateListingForm(form, notify) {
+  if (!form.property_id || isNaN(Number(form.property_id)) || Number(form.property_id) <= 0) {
+    notify("Property ID duhet të jetë numër pozitiv", "error"); return false;
+  }
+  if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0) {
+    notify("Çmimi duhet të jetë më i madh se 0", "error"); return false;
+  }
+  if (Number(form.price) > 999999999) {
+    notify("Çmimi është shumë i madh", "error"); return false;
+  }
+  if (form.deposit && (isNaN(Number(form.deposit)) || Number(form.deposit) < 0)) {
+    notify("Depozita nuk mund të jetë negative", "error"); return false;
+  }
+  if (form.min_lease_months && Number(form.min_lease_months) < 1) {
+    notify("Minimumi i muajve të qirasë duhet të jetë së paku 1", "error"); return false;
+  }
+  if (form.min_lease_months && Number(form.min_lease_months) > 120) {
+    notify("Minimumi i muajve nuk mund të kalojë 120", "error"); return false;
+  }
+  if (form.available_from && form.available_until) {
+    if (new Date(form.available_until) <= new Date(form.available_from)) {
+      notify("Data 'disponueshëm deri' duhet të jetë pas datës 'disponueshëm nga'", "error"); return false;
+    }
+  }
+  if (form.title && form.title.length > 255) {
+    notify("Titulli nuk mund të kalojë 255 karaktere", "error"); return false;
+  }
+  if (form.description && form.description.length > 2000) {
+    notify("Përshkrimi nuk mund të kalojë 2000 karaktere", "error"); return false;
+  }
+  return true;
+}
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
@@ -33,7 +66,6 @@ function Toast({ msg, type = "success", onDone }) {
     }}>{msg}</div>
   );
 }
-
 function Loader() {
   return (
     <div style={{ textAlign: "center", padding: "52px 0" }}>
@@ -43,7 +75,6 @@ function Loader() {
     </div>
   );
 }
-
 function EmptyState({ icon, text }) {
   return (
     <div style={{ textAlign: "center", padding: "52px 20px", color: "#94a3b8" }}>
@@ -52,7 +83,6 @@ function EmptyState({ icon, text }) {
     </div>
   );
 }
-
 function StatusBadge({ status }) {
   const s = STATUS_STYLE[status] || { bg: "#f1f5f9", color: "#64748b" };
   return (
@@ -62,18 +92,6 @@ function StatusBadge({ status }) {
     </span>
   );
 }
-
-function Field({ label, children, required }) {
-  return (
-    <div className="form-group">
-      <label className="form-label">
-        {label}{required && <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
   return (
@@ -89,8 +107,20 @@ function Pagination({ page, totalPages, onChange }) {
     </div>
   );
 }
-
-// ─── Modal ────────────────────────────────────────────────────────────────────
+function Field({ label, children, required, hint }) {
+  return (
+    <div className="form-group">
+      <label className="form-label">
+        {label}{required && <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>}
+      </label>
+      {children}
+      {hint && <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 4 }}>{hint}</p>}
+    </div>
+  );
+}
+function Row2({ children }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>{children}</div>;
+}
 function Modal({ title, onClose, children, wide = false }) {
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -110,17 +140,12 @@ function Modal({ title, onClose, children, wide = false }) {
           padding: "18px 24px", borderBottom: "1px solid #e8edf4" }}>
           <span style={{ fontWeight: 600, fontSize: 15 }}>{title}</span>
           <button onClick={onClose} style={{ width: 30, height: 30, border: "none",
-            background: "none", color: "#94a3b8", cursor: "pointer",
-            fontSize: 16, borderRadius: 6 }}>✕</button>
+            background: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
         <div style={{ padding: "22px 24px" }}>{children}</div>
       </div>
     </div>
   );
-}
-
-function Row2({ children }) {
-  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>{children}</div>;
 }
 
 // ─── Listing Form Modal ───────────────────────────────────────────────────────
@@ -138,43 +163,19 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
     min_lease_months: initial?.min_lease_months ?? 12,
     status:           initial?.status           ?? "ACTIVE",
   });
-  
-  const [properties, setProperties] = useState([]);
-  const [loadingProps, setLoadingProps] = useState(false);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  // Fetch active properties for dropdown
-  useEffect(() => {
-    if (!initial) {
-      const fetchProperties = async () => {
-        setLoadingProps(true);
-        try {
-          const res = await api.get("/api/properties?status=ACTIVE&size=100");
-          setProperties(res.data.content || []);
-        } catch (err) {
-          console.error("Gabim gjatë ngarkimit të properties", err);
-        } finally {
-          setLoadingProps(false);
-        }
-      };
-      fetchProperties();
-    }
-  }, [initial]);
-
   const handleSubmit = async () => {
-    if (!form.property_id || !form.price) {
-      notify("Property dhe çmimi janë të detyrueshme", "error");
-      return;
-    }
+    if (!validateListingForm(form, notify)) return;
     setSaving(true);
     try {
       const payload = {
         property_id:      Number(form.property_id),
-        title:            form.title            || null,
-        description:      form.description      || null,
-        available_from:   form.available_from   || null,
-        available_until:  form.available_until  || null,
+        title:            form.title.trim()      || null,
+        description:      form.description       || null,
+        available_from:   form.available_from    || null,
+        available_until:  form.available_until   || null,
         price:            Number(form.price),
         currency:         form.currency,
         deposit:          form.deposit ? Number(form.deposit) : null,
@@ -199,34 +200,20 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
     <Modal title={initial ? `Edit Listing #${initial.id}` : "New Rental Listing"}
       onClose={onClose} wide>
       <Row2>
-        <Field label="Property" required>
-          {initial ? (
-            <input className="form-input" type="number" value={form.property_id} disabled />
-          ) : (
-            <select 
-              className="form-select" 
-              value={form.property_id}
-              onChange={e => set("property_id", e.target.value)}
-              disabled={loadingProps}
-            >
-              <option value="">Zgjidh një property...</option>
-              {properties.map(prop => (
-                <option key={prop.id} value={prop.id}>
-                  #{prop.id} - {prop.title || prop.address || "Pa titull"}
-                </option>
-              ))}
-            </select>
-          )}
+        <Field label="Property ID" required hint="ID numerike e pronës">
+          <input className="form-input" type="number" min="1" value={form.property_id}
+            onChange={e => set("property_id", e.target.value)}
+            disabled={!!initial} placeholder="42" />
         </Field>
         <Field label="Titull">
           <input className="form-input" value={form.title}
             onChange={e => set("title", e.target.value)}
-            placeholder="2BR Apartment, Prishtinë" />
+            placeholder="2BR Apartment, Prishtinë" maxLength={255} />
         </Field>
       </Row2>
       <Row2>
-        <Field label="Çmimi / periudha" required>
-          <input className="form-input" type="number" value={form.price}
+        <Field label="Çmimi" required hint="Duhet të jetë > 0">
+          <input className="form-input" type="number" min="1" step="0.01" value={form.price}
             onChange={e => set("price", e.target.value)} placeholder="450" />
         </Field>
         <Field label="Periudha">
@@ -237,8 +224,8 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
         </Field>
       </Row2>
       <Row2>
-        <Field label="Depozita">
-          <input className="form-input" type="number" value={form.deposit}
+        <Field label="Depozita" hint="Opcionale, nuk mund të jetë negative">
+          <input className="form-input" type="number" min="0" step="0.01" value={form.deposit}
             onChange={e => set("deposit", e.target.value)} placeholder="900" />
         </Field>
         <Field label="Monedha">
@@ -253,14 +240,15 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
           <input className="form-input" type="date" value={form.available_from}
             onChange={e => set("available_from", e.target.value)} />
         </Field>
-        <Field label="Disponueshëm deri">
+        <Field label="Disponueshëm deri" hint="Duhet të jetë pas datës nga">
           <input className="form-input" type="date" value={form.available_until}
-            onChange={e => set("available_until", e.target.value)} />
+            onChange={e => set("available_until", e.target.value)}
+            min={form.available_from || undefined} />
         </Field>
       </Row2>
       <Row2>
-        <Field label="Min. muaj qira">
-          <input className="form-input" type="number" min="1"
+        <Field label="Min. muaj qira" hint="1 — 120 muaj">
+          <input className="form-input" type="number" min="1" max="120"
             value={form.min_lease_months}
             onChange={e => set("min_lease_months", e.target.value)} />
         </Field>
@@ -273,11 +261,14 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
           </Field>
         )}
       </Row2>
-      <Field label="Përshkrim">
+      <Field label="Përshkrim" hint="Max 2000 karaktere">
         <textarea value={form.description} onChange={e => set("description", e.target.value)}
-          rows={3} placeholder="Përshkrim i apartamentit..."
+          rows={3} placeholder="Përshkrim i apartamentit..." maxLength={2000}
           style={{ width: "100%", padding: "9px 12px", border: "1px solid #cbd5e1",
             borderRadius: 10, fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none" }} />
+        <p style={{ fontSize: 11, color: "#94a3b8", textAlign: "right", marginTop: 2 }}>
+          {form.description.length}/2000
+        </p>
       </Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
         <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
@@ -291,9 +282,10 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
 
 // ─── Applications Panel ───────────────────────────────────────────────────────
 function ApplicationsPanel({ listing, onClose, notify }) {
-  const [apps, setApps] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [reviewing, setReviewing] = useState(null); // app being reviewed
+  const navigate = useNavigate();
+  const [apps, setApps]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [reviewing, setReviewing] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -324,6 +316,12 @@ function ApplicationsPanel({ listing, onClose, notify }) {
     }
   };
 
+  const goToCreateContract = (propertyId) => {
+    navigate("/agent/contracts", {
+      state: { fromPropertyId: String(propertyId) },
+    });
+  };
+
   const APP_STATUS = {
     PENDING:   { bg: "#fffbeb", color: "#d97706" },
     APPROVED:  { bg: "#ecfdf5", color: "#059669" },
@@ -338,56 +336,81 @@ function ApplicationsPanel({ listing, onClose, notify }) {
         <EmptyState icon="📭" text="Nuk ka aplikime për këtë listing" />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {apps.map(app => (
-            <div key={app.id} style={{
-              border: "1px solid #e8edf4", borderRadius: 10,
-              padding: "14px 16px", background: "#f8fafc",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between",
-                alignItems: "flex-start", marginBottom: 10 }}>
-                <div>
-                  <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>
-                    Aplikim #{app.id} — Client #{app.client_id}
-                  </p>
-                  <p style={{ fontSize: 12.5, color: "#64748b" }}>
-                    {new Date(app.created_at).toLocaleDateString("sq-AL")}
-                    {app.income && ` · Të ardhura: €${Number(app.income).toLocaleString()}`}
-                    {app.move_in_date && ` · Move-in: ${fmtDate(app.move_in_date)}`}
-                  </p>
+          {apps.map(app => {
+            const s = APP_STATUS[app.status] || { bg: "#f1f5f9", color: "#64748b" };
+            return (
+              <div key={app.id} style={{
+                border: "1px solid #e8edf4", borderRadius: 10,
+                padding: "14px 16px", background: "#f8fafc",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between",
+                  alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>
+                      Aplikim #{app.id} — Client #{app.client_id}
+                    </p>
+                    <p style={{ fontSize: 12.5, color: "#64748b" }}>
+                      {new Date(app.created_at).toLocaleDateString("sq-AL")}
+                      {app.income && ` · Të ardhura: €${Number(app.income).toLocaleString()}`}
+                      {app.move_in_date && ` · Move-in: ${fmtDate(app.move_in_date)}`}
+                    </p>
+                  </div>
+                  <span style={{ background: s.bg, color: s.color,
+                    padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600 }}>
+                    {app.status}
+                  </span>
                 </div>
-                <span style={{
-                  ...(APP_STATUS[app.status] || { bg: "#f1f5f9", color: "#64748b" }),
-                  padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                }}>{app.status}</span>
+
+                {app.message && (
+                  <p style={{ fontSize: 13, color: "#374151", marginBottom: 10, fontStyle: "italic" }}>
+                    "{app.message}"
+                  </p>
+                )}
+
+                {app.status === "APPROVED" && listing.property_id && (
+                  <div style={{
+                    background: "#f0f4ff", border: "1px solid #c7d7fe",
+                    borderRadius: 8, padding: "10px 14px", marginBottom: 10,
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                  }}>
+                    <span style={{ fontSize: 13, color: "#4338ca" }}>
+                      ✓ Aprovuar — gati për kontratë
+                    </span>
+                    <button
+                      className="btn btn--sm"
+                      style={{ background: "#6366f1", color: "white", border: "none" }}
+                      onClick={() => goToCreateContract(listing.property_id)}
+                    >
+                      📋 Krijo Kontratë →
+                    </button>
+                  </div>
+                )}
+
+                {app.status === "PENDING" && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn--sm"
+                      style={{ background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }}
+                      onClick={() => handleReview(app.id, "APPROVED")}>
+                      ✓ Aprovo
+                    </button>
+                    <button className="btn btn--danger btn--sm"
+                      onClick={() => setReviewing(app)}>
+                      ✕ Refuzo
+                    </button>
+                  </div>
+                )}
+
+                {app.rejection_reason && (
+                  <p style={{ fontSize: 12, color: "#dc2626", marginTop: 6 }}>
+                    Arsyeja: {app.rejection_reason}
+                  </p>
+                )}
               </div>
-              {app.message && (
-                <p style={{ fontSize: 13, color: "#374151", marginBottom: 10,
-                  fontStyle: "italic" }}>"{app.message}"</p>
-              )}
-              {app.status === "PENDING" && (
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn--sm"
-                    style={{ background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }}
-                    onClick={() => handleReview(app.id, "APPROVED")}>
-                    ✓ Aprovo
-                  </button>
-                  <button className="btn btn--danger btn--sm"
-                    onClick={() => setReviewing(app)}>
-                    ✕ Refuzo
-                  </button>
-                </div>
-              )}
-              {app.rejection_reason && (
-                <p style={{ fontSize: 12, color: "#dc2626", marginTop: 6 }}>
-                  Arsyeja: {app.rejection_reason}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Rejection reason dialog */}
       {reviewing && (
         <RejectDialog
           app={reviewing}
@@ -407,13 +430,16 @@ function RejectDialog({ app, onConfirm, onClose }) {
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ background: "#fff", borderRadius: 14, padding: 24, maxWidth: 420, width: "100%" }}>
         <h3 style={{ fontWeight: 600, marginBottom: 14 }}>Refuzo aplikimin #{app.id}</h3>
-        <Field label="Arsyeja e refuzimit">
+        <div className="form-group">
+          <label className="form-label">Arsyeja e refuzimit</label>
           <textarea value={reason} onChange={e => setReason(e.target.value)}
-            rows={3} placeholder="Shkruaj arsyen..."
+            rows={3} placeholder="Shkruaj arsyen..." maxLength={500}
             style={{ width: "100%", padding: "9px 12px", border: "1px solid #cbd5e1",
-              borderRadius: 10, fontSize: 14, fontFamily: "inherit",
-              resize: "vertical", outline: "none" }} />
-        </Field>
+              borderRadius: 10, fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none" }} />
+          <p style={{ fontSize: 11, color: "#94a3b8", textAlign: "right", marginTop: 2 }}>
+            {reason.length}/500
+          </p>
+        </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 10 }}>
           <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
           <button className="btn btn--danger" onClick={() => onConfirm(reason || null)}>
@@ -426,18 +452,16 @@ function RejectDialog({ app, onConfirm, onClose }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════════
 export default function AgentRentals() {
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [listings, setListings]     = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [page, setPage]             = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen]   = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
+  const [deleteId, setDeleteId]     = useState(null);
   const [appsTarget, setAppsTarget] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast]           = useState(null);
 
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
@@ -505,14 +529,8 @@ export default function AgentRentals() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Titull / Property</th>
-                    <th>Çmimi</th>
-                    <th>Depozita</th>
-                    <th>Disponueshëm</th>
-                    <th>Min. muaj</th>
-                    <th>Statusi</th>
-                    <th>Veprime</th>
+                    <th>#</th><th>Titull / Property</th><th>Çmimi</th><th>Depozita</th>
+                    <th>Disponueshëm</th><th>Min. muaj</th><th>Statusi</th><th>Veprime</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -520,42 +538,28 @@ export default function AgentRentals() {
                     <tr key={l.id}>
                       <td style={{ color: "#94a3b8", fontSize: 12 }}>{l.id}</td>
                       <td>
-                        <p style={{ fontWeight: 500, fontSize: 13.5 }}>
-                          {l.title || `Listing #${l.id}`}
-                        </p>
+                        <p style={{ fontWeight: 500, fontSize: 13.5 }}>{l.title || `Listing #${l.id}`}</p>
                         <span style={{ background: "#eef2ff", color: "#6366f1",
                           padding: "1px 7px", borderRadius: 20, fontSize: 11 }}>
-                          #{l.property_id}
+                          prop #{l.property_id}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {fmtPrice(l.price, l.currency, l.price_period)}
-                      </td>
+                      <td style={{ fontWeight: 600 }}>{fmtPrice(l.price, l.currency, l.price_period)}</td>
                       <td>{fmtMoney(l.deposit)}</td>
                       <td>
-                        <p style={{ fontSize: 12.5, color: "#64748b" }}>
-                          {fmtDate(l.available_from)} →
-                        </p>
-                        <p style={{ fontSize: 12.5, color: "#64748b" }}>
-                          {fmtDate(l.available_until)}
-                        </p>
+                        <p style={{ fontSize: 12.5, color: "#64748b" }}>{fmtDate(l.available_from)} →</p>
+                        <p style={{ fontSize: 12.5, color: "#64748b" }}>{fmtDate(l.available_until)}</p>
                       </td>
                       <td style={{ textAlign: "center" }}>{l.min_lease_months || "—"}</td>
                       <td><StatusBadge status={l.status} /></td>
                       <td>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button className="btn btn--ghost btn--sm"
-                            onClick={() => setAppsTarget(l)}>
-                            Aplikimet
-                          </button>
+                            onClick={() => setAppsTarget(l)}>Aplikimet</button>
                           <button className="btn btn--secondary btn--sm"
-                            onClick={() => { setEditTarget(l); setModalOpen(true); }}>
-                            Edit
-                          </button>
+                            onClick={() => { setEditTarget(l); setModalOpen(true); }}>Edit</button>
                           <button className="btn btn--danger btn--sm"
-                            onClick={() => setDeleteId(l.id)}>
-                            Del
-                          </button>
+                            onClick={() => setDeleteId(l.id)}>Del</button>
                         </div>
                       </td>
                     </tr>
@@ -569,16 +573,9 @@ export default function AgentRentals() {
       </div>
 
       {modalOpen && (
-        <ListingModal
-          initial={editTarget}
-          onClose={() => setModalOpen(false)}
-          onSuccess={() => {
-            setModalOpen(false);
-            fetchListings();
-            notify(editTarget ? "Listing u ndryshua" : "Listing u krijua");
-          }}
-          notify={notify}
-        />
+        <ListingModal initial={editTarget} onClose={() => setModalOpen(false)}
+          onSuccess={() => { setModalOpen(false); fetchListings(); notify(editTarget ? "Listing u ndryshua" : "Listing u krijua"); }}
+          notify={notify} />
       )}
 
       {deleteId && (
@@ -594,15 +591,10 @@ export default function AgentRentals() {
       )}
 
       {appsTarget && (
-        <ApplicationsPanel
-          listing={appsTarget}
-          onClose={() => setAppsTarget(null)}
-          notify={notify}
-        />
+        <ApplicationsPanel listing={appsTarget} onClose={() => setAppsTarget(null)} notify={notify} />
       )}
 
-      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type}
-        onDone={() => setToast(null)} />}
+      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </MainLayout>
   );
 }
