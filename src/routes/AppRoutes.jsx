@@ -10,6 +10,10 @@ import AdminProperties from "../pages/admin/AllProperties";
 import ClientPropeties from "../pages/client/BrowseProperties";
 import AgentProperties from "../pages/agent/Properties";
 import SalesAdminModule from "../pages/admin/AdminSales";
+import AdminRentals from "../pages/admin/Rentals";
+import AdminRentalApplications from "../pages/admin/RentalApplications";
+import AdminContracts from "../pages/admin/Contracts";
+import AdminPayments from "../pages/admin/Payments";
 
 import AgentSales from "../pages/agent/AgentSales";
 import AgentProfile from "../pages/agent/AgentProfile";
@@ -50,6 +54,10 @@ export default function AppRoutes() {
     <Route path="/admin" element={<AdminDashboard />} />
     <Route path="/admin/allproperties" element={<AdminProperties/>} />
     <Route path="/admin/sales" element={<SalesAdminModule/>} />
+    <Route path="/admin/rentals" element={<AdminRentals/>} />
+    <Route path="/admin/applications" element={<AdminRentalApplications/>} />
+    <Route path="/admin/contracts" element={<AdminContracts/>} />
+    <Route path="/admin/payments" element={<AdminPayments/>} />
     
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />
