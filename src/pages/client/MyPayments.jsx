@@ -4,19 +4,19 @@ import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const STATUS_STYLE = {
-  PENDING:  { bg: "#fffbeb", color: "#d97706" },
-  PAID:     { bg: "#ecfdf5", color: "#059669" },
-  FAILED:   { bg: "#fef2f2", color: "#dc2626" },
-  OVERDUE:  { bg: "#fff1f2", color: "#be123c" },
-  REFUNDED: { bg: "#f5f3ff", color: "#7c3aed" },
+const PAY_STATUS = {
+  PENDING:  { bg: "#fffbeb", color: "#c9a84c", border: "#f0d878" },
+  PAID:     { bg: "#edf5f0", color: "#2a6049", border: "#a3c9b0" },
+  FAILED:   { bg: "#fff5ee", color: "#8b4513", border: "#f5c6a0" },
+  OVERDUE:  { bg: "#fff5ee", color: "#8b3a1c", border: "#e8b090" },
+  REFUNDED: { bg: "#f5f2eb", color: "#5a5f3a", border: "#d9d4c7" },
 };
 
 const CONTRACT_STATUS_STYLE = {
-  ACTIVE:            { bg: "#ecfdf5", color: "#059669" },
-  ENDED:             { bg: "#f1f5f9", color: "#64748b" },
-  CANCELLED:         { bg: "#fef2f2", color: "#dc2626" },
-  PENDING_SIGNATURE: { bg: "#fffbeb", color: "#d97706" },
+  ACTIVE:            { bg: "#edf5f0", color: "#2a6049", border: "#a3c9b0" },
+  ENDED:             { bg: "#f5f2eb", color: "#8a8469", border: "#d9d4c7" },
+  CANCELLED:         { bg: "#fff5ee", color: "#8b4513", border: "#f5c6a0" },
+  PENDING_SIGNATURE: { bg: "#fffbeb", color: "#c9a84c", border: "#f0d878" },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ function isOverdue(p) {
   return new Date(p.due_date) < new Date();
 }
 
-// ─── Shared UI ────────────────────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
   return (
@@ -38,158 +38,142 @@ function Toast({ msg, type = "success", onDone }) {
       color: type === "error" ? "#b91c1c" : "#047857",
       padding: "12px 20px", borderRadius: 10, fontSize: 13.5, fontWeight: 500,
       boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340,
+      fontFamily: "'Georgia', serif",
     }}>{msg}</div>
-  );
-}
-
-function Loader() {
-  return (
-    <div style={{ textAlign: "center", padding: "52px 0" }}>
-      <div style={{ width: 30, height: 30, margin: "0 auto",
-        border: "3px solid #e8edf4", borderTop: "3px solid #6366f1",
-        borderRadius: "50%", animation: "spin .7s linear infinite" }} />
-    </div>
-  );
-}
-
-function EmptyState({ icon, text, sub }) {
-  return (
-    <div style={{ textAlign: "center", padding: "64px 20px", color: "#94a3b8" }}>
-      <div style={{ fontSize: 44, marginBottom: 12 }}>{icon}</div>
-      <p style={{ fontSize: 15, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>{text}</p>
-      {sub && <p style={{ fontSize: 13 }}>{sub}</p>}
-    </div>
-  );
-}
-
-function StatusBadge({ status, styleMap }) {
-  const s = (styleMap || STATUS_STYLE)[status] || { bg: "#f1f5f9", color: "#64748b" };
-  return (
-    <span style={{ background: s.bg, color: s.color,
-      padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600 }}>
-      {status?.replace("_", " ")}
-    </span>
-  );
-}
-
-function Pagination({ page, totalPages, onChange }) {
-  if (totalPages <= 1) return null;
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6,
-      justifyContent: "flex-end", padding: "14px 16px" }}>
-      <button className="btn btn--secondary btn--sm" disabled={page === 0}
-        onClick={() => onChange(page - 1)}>← Prev</button>
-      <span style={{ fontSize: 13, color: "#64748b", padding: "0 8px" }}>
-        {page + 1} / {totalPages}
-      </span>
-      <button className="btn btn--secondary btn--sm" disabled={page >= totalPages - 1}
-        onClick={() => onChange(page + 1)}>Next →</button>
-    </div>
   );
 }
 
 // ─── Contract Selector ────────────────────────────────────────────────────────
 function ContractSelector({ contracts, selectedId, onSelect }) {
   if (contracts.length === 0) return null;
+
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <button
         onClick={() => onSelect(null)}
         style={{
-          padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500,
+          padding: "7px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600,
           border: "1.5px solid",
-          borderColor: selectedId === null ? "#6366f1" : "#cbd5e1",
-          background:  selectedId === null ? "#eef2ff" : "#fff",
-          color:       selectedId === null ? "#6366f1" : "#475569",
-          cursor: "pointer",
+          borderColor: selectedId === null ? "#5a5f3a" : "#d9d4c7",
+          background:  selectedId === null ? "#5a5f3a" : "#fff",
+          color:       selectedId === null ? "#fff"    : "#5a5f3a",
+          cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
         }}>
         Të gjitha
       </button>
-      {contracts.map(c => (
-        <button
-          key={c.id}
-          onClick={() => onSelect(c.id)}
-          style={{
-            padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500,
-            border: "1.5px solid",
-            borderColor: selectedId === c.id ? "#6366f1" : "#cbd5e1",
-            background:  selectedId === c.id ? "#eef2ff" : "#fff",
-            color:       selectedId === c.id ? "#6366f1" : "#475569",
-            cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 6,
-          }}>
-          Kontratë #{c.id}
-          <StatusBadge status={c.status} styleMap={CONTRACT_STATUS_STYLE} />
-        </button>
-      ))}
+      {contracts.map(c => {
+        const s  = CONTRACT_STATUS_STYLE[c.status] || CONTRACT_STATUS_STYLE.ENDED;
+        const active = selectedId === c.id;
+        return (
+          <button key={c.id} onClick={() => onSelect(c.id)}
+            style={{
+              padding: "7px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+              border: "1.5px solid",
+              borderColor: active ? "#5a5f3a" : "#d9d4c7",
+              background:  active ? "#5a5f3a" : "#fff",
+              color:       active ? "#fff"    : "#5a5f3a",
+              cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+              display: "flex", alignItems: "center", gap: 7,
+            }}>
+            Kontratë #{c.id}
+            <span style={{
+              background: active ? "rgba(255,255,255,0.2)" : s.bg,
+              color:      active ? "#fff" : s.color,
+              border:     `1px solid ${active ? "rgba(255,255,255,0.3)" : s.border}`,
+              padding: "1px 7px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+            }}>
+              {c.status?.replace("_", " ")}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-// ─── Payment Timeline Item ────────────────────────────────────────────────────
+// ─── Payment Item ─────────────────────────────────────────────────────────────
 function PaymentItem({ payment }) {
-  const overdue = isOverdue(payment);
-  const s = STATUS_STYLE[payment.status] || { bg: "#f1f5f9", color: "#64748b" };
+  const overdue       = isOverdue(payment);
   const displayStatus = overdue && payment.status === "PENDING" ? "OVERDUE" : payment.status;
-  const dispStyle = STATUS_STYLE[displayStatus] || s;
+  const s             = PAY_STATUS[displayStatus] || { bg: "#f5f2eb", color: "#8a8469", border: "#d9d4c7" };
+
+  const typeIcon = {
+    RENT:      "💳",
+    DEPOSIT:   "🔒",
+    LATE_FEE:  "🔴",
+    REFUND:    "↩️",
+  }[payment.payment_type] || "💳";
 
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "14px 18px",
-      background: overdue ? "#fff9f9" : "#fff",
-      borderRadius: 10,
-      border: `1px solid ${overdue ? "#fecaca" : "#e8edf4"}`,
+      background: overdue ? "#fff9f5" : "#fff",
+      borderRadius: 12,
+      border: `1px solid ${overdue ? "#f5c6a0" : "#e5e0d4"}`,
       transition: "box-shadow 0.15s",
-    }}>
-      {/* Left: type + dates */}
+      fontFamily: "'Georgia', serif",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(90,95,58,0.1)"; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}
+    >
+      {/* Left */}
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        {/* Icon */}
         <div style={{
-          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          width: 42, height: 42, borderRadius: 10, flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: dispStyle.bg, fontSize: 18,
+          background: s.bg, border: `1px solid ${s.border}`, fontSize: 18,
         }}>
-          {payment.status === "PAID" ? "✓" :
-           overdue ? "⚠️" :
-           payment.payment_type === "DEPOSIT" ? "🔒" :
-           payment.payment_type === "LATE_FEE" ? "🔴" : "💳"}
+          {payment.status === "PAID" ? "✓" : overdue ? "⚠️" : typeIcon}
         </div>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <span style={{ fontWeight: 600, fontSize: 13.5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 800, fontSize: 14, color: "#2c2c1e" }}>
               {fmtMoney(payment.amount)} {payment.currency}
             </span>
-            <span style={{ background: "#f1f5f9", color: "#475569",
-              padding: "1px 7px", borderRadius: 20, fontSize: 11, fontWeight: 500 }}>
+            <span style={{ background: "#f5f2eb", color: "#6b6651", padding: "1px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
               {payment.payment_type}
             </span>
-            <span style={{ background: "#eef2ff", color: "#6366f1",
-              padding: "1px 7px", borderRadius: 20, fontSize: 11, fontWeight: 500 }}>
+            <span style={{ background: "#edf2e8", color: "#3d5227", border: "1px solid #c8d4b0", padding: "1px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
               #{payment.contract_id}
             </span>
           </div>
-          <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+          <p style={{ fontSize: 12, color: "#8a8469", margin: 0 }}>
             Due: {fmtDate(payment.due_date)}
             {payment.paid_date && ` · Paguar: ${fmtDate(payment.paid_date)}`}
             {payment.payment_method && ` · ${payment.payment_method}`}
             {payment.transaction_ref && ` · Ref: ${payment.transaction_ref}`}
           </p>
           {payment.notes && (
-            <p style={{ fontSize: 12, color: "#94a3b8", margin: "2px 0 0", fontStyle: "italic" }}>
-              {payment.notes}
-            </p>
+            <p style={{ fontSize: 12, color: "#a0997e", margin: "2px 0 0", fontStyle: "italic" }}>{payment.notes}</p>
           )}
         </div>
       </div>
 
-      {/* Right: status */}
+      {/* Right */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ background: dispStyle.bg, color: dispStyle.color,
-          padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 600 }}>
+        {overdue && <span style={{ fontSize: 12, color: "#8b4513", fontWeight: 700 }}>⚠️ Vonuar</span>}
+        <span style={{
+          background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+          padding: "3px 11px", borderRadius: 20, fontSize: 11.5, fontWeight: 700,
+        }}>
           {displayStatus}
         </span>
       </div>
+    </div>
+  );
+}
+
+// ─── Section Header ───────────────────────────────────────────────────────────
+function SectionHeader({ label, count, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: "0.7px" }}>
+        {label}
+      </span>
+      <span style={{ background: "#f5f2eb", color: "#8a8469", border: "1px solid #e5e0d4", padding: "1px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+        {count}
+      </span>
     </div>
   );
 }
@@ -200,44 +184,33 @@ function PaymentItem({ payment }) {
 export default function ClientPayments() {
   const { user } = useContext(AuthContext);
 
-  // Contracts (for tab selector)
-  const [contracts,    setContracts]    = useState([]);
-  const [contractsLoaded, setContractsLoaded] = useState(false);
-
-  // Payments state
-  const [payments,     setPayments]     = useState([]);
-  const [summary,      setSummary]      = useState(null);
-  const [loading,      setLoading]      = useState(false);
+  const [contracts,        setContracts]        = useState([]);
+  const [contractsLoaded,  setContractsLoaded]  = useState(false);
+  const [payments,         setPayments]         = useState([]);
+  const [summary,          setSummary]          = useState(null);
+  const [loading,          setLoading]          = useState(false);
   const [selectedContractId, setSelectedContractId] = useState(null);
-
-  const [toast, setToast] = useState(null);
+  const [toast,            setToast]            = useState(null);
 
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
 
-  // ── Load client contracts ────────────────────────────────────────────────────
+  // Load contracts
   useEffect(() => {
     if (!user?.id) return;
     const loadContracts = async () => {
       try {
         const res = await api.get(`/api/contracts/lease/client/${user.id}?page=0&size=100`);
         setContracts(res.data.content || []);
-      } catch {
-        notify("Gabim gjatë ngarkimit të kontratave", "error");
-      } finally {
-        setContractsLoaded(true);
-      }
+      } catch { notify("Gabim gjatë ngarkimit të kontratave", "error"); }
+      finally   { setContractsLoaded(true); }
     };
     loadContracts();
   }, [user?.id, notify]);
 
-  // ── Load payments when contract selected ───────────────────────────────────
+  // Load payments for selected contract
   const loadPayments = useCallback(async (contractId) => {
-    if (!contractId) {
-      setPayments([]);
-      setSummary(null);
-      return;
-    }
+    if (!contractId) { setPayments([]); setSummary(null); return; }
     setLoading(true);
     try {
       const [listRes, sumRes] = await Promise.all([
@@ -246,21 +219,16 @@ export default function ClientPayments() {
       ]);
       setPayments(Array.isArray(listRes.data) ? listRes.data : []);
       setSummary(sumRes.data);
-    } catch {
-      notify("Gabim gjatë ngarkimit të pagesave", "error");
-    } finally {
-      setLoading(false);
-    }
+    } catch { notify("Gabim gjatë ngarkimit të pagesave", "error"); }
+    finally   { setLoading(false); }
   }, [notify]);
 
   // Auto-select first active contract
   useEffect(() => {
-    if (!contractsLoaded) return;
-    if (contracts.length > 0 && selectedContractId === null) {
-      const active = contracts.find(c => c.status === "ACTIVE") || contracts[0];
-      setSelectedContractId(active.id);
-      loadPayments(active.id);
-    }
+    if (!contractsLoaded || contracts.length === 0 || selectedContractId !== null) return;
+    const active = contracts.find(c => c.status === "ACTIVE") || contracts[0];
+    setSelectedContractId(active.id);
+    loadPayments(active.id);
   }, [contractsLoaded, contracts, selectedContractId, loadPayments]);
 
   const handleSelectContract = (id) => {
@@ -268,173 +236,182 @@ export default function ClientPayments() {
     loadPayments(id);
   };
 
-  // ── Computed stats ────────────────────────────────────────────────────────────
-  const overduePays  = payments.filter(p => isOverdue(p) || p.status === "OVERDUE");
-  const pendingPays  = payments.filter(p => p.status === "PENDING" && !isOverdue(p));
-  const paidPays     = payments.filter(p => p.status === "PAID");
+  // Computed
+  const overduePays = payments.filter(p => isOverdue(p) || p.status === "OVERDUE");
+  const pendingPays = payments.filter(p => p.status === "PENDING" && !isOverdue(p));
+  const paidPays    = payments.filter(p => p.status === "PAID");
+  const otherPays   = payments.filter(p => !["PAID","PENDING","OVERDUE"].includes(p.status) && !isOverdue(p));
 
-  const totalPaid    = paidPays.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+  const totalPaid    = paidPays.reduce((acc, p)    => acc + Number(p.amount || 0), 0);
   const totalPending = [...pendingPays, ...overduePays].reduce((acc, p) => acc + Number(p.amount || 0), 0);
 
   return (
     <MainLayout role="client">
-      <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes spin { to { transform:rotate(360deg); } }
-      `}</style>
+      <div style={{ background: "#f5f2eb", minHeight: "100vh", fontFamily: "'Georgia', serif" }}>
 
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Pagesat e Mia</h1>
-          <p className="page-subtitle">Shiko historikun e pagesave të qirasë</p>
-        </div>
-      </div>
+        {/* ── Hero ── */}
+        <div style={{ background: "linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)", padding: "48px 32px 40px", textAlign: "center" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "32px", fontWeight: 800, color: "#fff", letterSpacing: "-0.5px" }}>
+            Pagesat e Mia
+          </h1>
+          <p style={{ margin: "0 0 24px", color: "#c8ccaa", fontSize: "15px" }}>
+            Shiko historikun e pagesave të qirasë
+          </p>
 
-      {/* No contracts state */}
-      {contractsLoaded && contracts.length === 0 && (
-        <div className="card">
-          <EmptyState
-            icon="💳"
-            text="Nuk keni kontrata aktive"
-            sub="Pagesat do të shfaqen këtu pasi të keni një kontratë qiraje aktive."
-          />
-        </div>
-      )}
-
-      {contracts.length > 0 && (
-        <>
-          {/* Contract selector */}
-          <div className="card" style={{ marginBottom: 20 }}>
-            <div style={{ padding: "16px 20px" }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 10 }}>
-                Zgjidh kontratën:
-              </p>
-              <ContractSelector
-                contracts={contracts}
-                selectedId={selectedContractId}
-                onSelect={handleSelectContract}
-              />
-            </div>
-          </div>
-
-          {/* Overdue alert */}
-          {overduePays.length > 0 && (
-            <div style={{ background: "#fff1f2", border: "1px solid #fecdd3",
-              borderRadius: 10, padding: "12px 18px", marginBottom: 20,
-              fontSize: 13.5, color: "#be123c", fontWeight: 500 }}>
-              🔴 Keni <strong>{overduePays.length}</strong> pagesë me vonesë totalisht{" "}
-              <strong>{fmtMoney(overduePays.reduce((s, p) => s + Number(p.amount || 0), 0))}</strong>.
-              Ju lutemi kontaktoni agjentin tuaj.
-            </div>
-          )}
-
-          {/* Summary cards */}
           {selectedContractId && !loading && payments.length > 0 && (
-            <div style={{ display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: 14, marginBottom: 24 }}>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               {[
-                { label: "Total Pagesa", value: payments.length,     color: "#6366f1", bg: "#eef2ff" },
-                { label: "Paguar",       value: fmtMoney(totalPaid), color: "#059669", bg: "#ecfdf5" },
-                { label: "Në Pritje",    value: fmtMoney(totalPending), color: "#d97706", bg: "#fffbeb" },
-                { label: "Me Vonesë",    value: overduePays.length,  color: "#dc2626", bg: "#fef2f2" },
-              ].map(s => (
-                <div key={s.label} className="stat-card" style={{ background: s.bg }}>
-                  <div className="stat-card__label">{s.label}</div>
-                  <div className="stat-card__value" style={{ color: s.color }}>{s.value}</div>
+                { label: "Total Pagesa", value: payments.length,       accent: "#c8ccaa" },
+                { label: "Paguar",       value: fmtMoney(totalPaid),   accent: "#a3c9b0" },
+                { label: "Në Pritje",    value: fmtMoney(totalPending),accent: "#c9a84c" },
+                { label: "Me Vonesë",    value: overduePays.length,    accent: "#f5c6a0" },
+              ].map(stat => (
+                <div key={stat.label} style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(6px)", borderRadius: 12, padding: "12px 20px", border: "1px solid rgba(255,255,255,0.15)", minWidth: 90 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: stat.accent, lineHeight: 1 }}>{stat.value}</div>
+                  <div style={{ fontSize: 11, color: "#c8ccaa", fontWeight: 600, marginTop: 3, textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
                 </div>
               ))}
             </div>
           )}
+        </div>
 
-          {/* Payment list */}
-          <div className="card">
-            <div className="card__header">
-              <h2 className="card__title">
-                {selectedContractId
-                  ? `Pagesat — Kontratë #${selectedContractId}`
-                  : "Zgjidh një kontratë"}
-              </h2>
-              {!loading && payments.length > 0 && (
-                <span style={{ background: "#eef2ff", color: "#6366f1",
-                  padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 500 }}>
-                  {payments.length} pagesa
-                </span>
-              )}
+        {/* ── Body ── */}
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "28px 24px" }}>
+
+          {/* No contracts */}
+          {contractsLoaded && contracts.length === 0 && (
+            <div style={{ textAlign: "center", padding: "64px 32px", color: "#8a8469" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>💳</div>
+              <h3 style={{ color: "#5a5f3a", margin: "0 0 8px", fontSize: 18 }}>Nuk keni kontrata aktive</h3>
+              <p style={{ margin: 0, fontSize: 14 }}>Pagesat do të shfaqen këtu pasi të keni një kontratë qiraje aktive.</p>
             </div>
+          )}
 
-            {!selectedContractId ? (
-              <EmptyState icon="👆" text="Zgjidh një kontratë" sub="Kliko mbi një kontratë për të parë pagesat." />
-            ) : loading ? <Loader /> : payments.length === 0 ? (
-              <EmptyState icon="💳" text="Nuk ka pagesa" sub="Nuk ka pagesa për këtë kontratë aktualisht." />
-            ) : (
-              <>
-                {/* Group by status: overdue first, then pending, then paid */}
-                {overduePays.length > 0 && (
-                  <div style={{ padding: "0 16px 4px" }}>
-                    <p style={{ fontSize: 11.5, fontWeight: 700, color: "#be123c",
-                      textTransform: "uppercase", letterSpacing: "0.06em",
-                      marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                      ⚠️ Me Vonesë ({overduePays.length})
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                      {overduePays.map(p => <PaymentItem key={p.id} payment={p} />)}
+          {contracts.length > 0 && (
+            <>
+              {/* Contract selector card */}
+              <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e5e0d4", boxShadow: "0 2px 12px rgba(90,95,58,0.08)", padding: "18px 22px", marginBottom: 20 }}>
+                <p style={{ fontSize: 11.5, fontWeight: 700, color: "#a0997e", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 12 }}>
+                  Zgjidh kontratën
+                </p>
+                <ContractSelector
+                  contracts={contracts}
+                  selectedId={selectedContractId}
+                  onSelect={handleSelectContract}
+                />
+              </div>
+
+              {/* Overdue alert */}
+              {overduePays.length > 0 && (
+                <div style={{ background: "#fff5ee", border: "1px solid #f5c6a0", borderRadius: 12, padding: "14px 20px", marginBottom: 20, fontSize: 13.5, color: "#8b4513", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+                  🔴 Keni <strong>{overduePays.length}</strong> pagesë me vonesë —
+                  <strong>{fmtMoney(overduePays.reduce((s, p) => s + Number(p.amount || 0), 0))}</strong>.
+                  Ju lutemi kontaktoni agjentin tuaj.
+                </div>
+              )}
+
+              {/* Summary stat cards */}
+              {selectedContractId && !loading && summary && payments.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 22 }}>
+                  {[
+                    { label: "Total Pagesa", value: payments.length,                                         color: "#5a5f3a", bg: "#f5f2eb", border: "#d9d4c7" },
+                    { label: "Paguar",       value: `€${Number(summary.total_paid    || 0).toLocaleString()}`,color: "#2a6049", bg: "#edf5f0", border: "#a3c9b0" },
+                    { label: "Në Pritje",    value: `€${Number(summary.total_pending || 0).toLocaleString()}`,color: "#c9a84c", bg: "#fffbeb", border: "#f0d878" },
+                    { label: "Me Vonesë",    value: overduePays.length,                                       color: "#8b4513", bg: "#fff5ee", border: "#f5c6a0" },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: "14px 16px", border: `1px solid ${s.border}`, boxShadow: "0 2px 8px rgba(90,95,58,0.06)" }}>
+                      <p style={{ fontSize: 11, color: "#a0997e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{s.label}</p>
+                      <p style={{ fontSize: 20, fontWeight: 900, color: s.color, margin: 0 }}>{s.value}</p>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+              )}
 
-                {pendingPays.length > 0 && (
-                  <div style={{ padding: "0 16px 4px" }}>
-                    <p style={{ fontSize: 11.5, fontWeight: 700, color: "#d97706",
-                      textTransform: "uppercase", letterSpacing: "0.06em",
-                      marginBottom: 10 }}>
-                      Në Pritje ({pendingPays.length})
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                      {pendingPays.map(p => <PaymentItem key={p.id} payment={p} />)}
+              {/* Payment list */}
+              <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e5e0d4", boxShadow: "0 2px 12px rgba(90,95,58,0.08)", overflow: "hidden" }}>
+                {/* Card header */}
+                <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e0d4", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#2c2c1e" }}>
+                    {selectedContractId ? `Pagesat — Kontratë #${selectedContractId}` : "Zgjidh një kontratë"}
+                  </h2>
+                  {!loading && payments.length > 0 && (
+                    <span style={{ background: "#edf2e8", color: "#3d5227", border: "1px solid #c8d4b0", padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                      {payments.length} pagesa
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ padding: "18px 22px" }}>
+                  {!selectedContractId ? (
+                    <div style={{ textAlign: "center", padding: "48px 20px", color: "#8a8469" }}>
+                      <div style={{ fontSize: 40, marginBottom: 10 }}>👆</div>
+                      <p style={{ fontSize: 14 }}>Zgjidh një kontratë për të parë pagesat.</p>
                     </div>
-                  </div>
-                )}
-
-                {paidPays.length > 0 && (
-                  <div style={{ padding: "0 16px 4px" }}>
-                    <p style={{ fontSize: 11.5, fontWeight: 700, color: "#059669",
-                      textTransform: "uppercase", letterSpacing: "0.06em",
-                      marginBottom: 10 }}>
-                      Të Paguara ({paidPays.length})
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                      {paidPays.map(p => <PaymentItem key={p.id} payment={p} />)}
+                  ) : loading ? (
+                    <div style={{ textAlign: "center", padding: "40px 0" }}>
+                      <div style={{ width: 28, height: 28, margin: "0 auto", border: "3px solid #e5e0d4", borderTop: "3px solid #5a5f3a", borderRadius: "50%", animation: "spin .7s linear infinite" }} />
                     </div>
-                  </div>
-                )}
-
-                {/* Remaining statuses (FAILED, REFUNDED) */}
-                {payments.filter(p =>
-                  !["PAID", "PENDING", "OVERDUE"].includes(p.status) && !isOverdue(p)
-                ).length > 0 && (
-                  <div style={{ padding: "0 16px 16px" }}>
-                    <p style={{ fontSize: 11.5, fontWeight: 700, color: "#64748b",
-                      textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
-                      Të tjera
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {payments.filter(p =>
-                        !["PAID", "PENDING", "OVERDUE"].includes(p.status) && !isOverdue(p)
-                      ).map(p => <PaymentItem key={p.id} payment={p} />)}
+                  ) : payments.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "48px 20px", color: "#8a8469" }}>
+                      <div style={{ fontSize: 40, marginBottom: 10 }}>💳</div>
+                      <p style={{ fontSize: 14 }}>Nuk ka pagesa për këtë kontratë aktualisht.</p>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </>
-      )}
+                  ) : (
+                    <>
+                      {/* Overdue */}
+                      {overduePays.length > 0 && (
+                        <div style={{ marginBottom: 20 }}>
+                          <SectionHeader label="⚠️ Me Vonesë" count={overduePays.length} color="#8b4513" />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {overduePays.map(p => <PaymentItem key={p.id} payment={p} />)}
+                          </div>
+                        </div>
+                      )}
 
-      {toast && (
-        <Toast key={toast.key} msg={toast.msg} type={toast.type}
-          onDone={() => setToast(null)} />
-      )}
+                      {/* Pending */}
+                      {pendingPays.length > 0 && (
+                        <div style={{ marginBottom: 20 }}>
+                          <SectionHeader label="Në Pritje" count={pendingPays.length} color="#c9a84c" />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {pendingPays.map(p => <PaymentItem key={p.id} payment={p} />)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Paid */}
+                      {paidPays.length > 0 && (
+                        <div style={{ marginBottom: 20 }}>
+                          <SectionHeader label="Të Paguara" count={paidPays.length} color="#2a6049" />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {paidPays.map(p => <PaymentItem key={p.id} payment={p} />)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Other (FAILED, REFUNDED…) */}
+                      {otherPays.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <SectionHeader label="Të tjera" count={otherPays.length} color="#8a8469" />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {otherPays.map(p => <PaymentItem key={p.id} payment={p} />)}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:.9} }
+        @keyframes spin { to { transform:rotate(360deg); } }
+      `}</style>
     </MainLayout>
   );
 }
