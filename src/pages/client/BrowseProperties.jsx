@@ -164,7 +164,7 @@ function Toast({ msg, type="success", onDone }) {
   );
 }
 
-// ─── Mini Price Chart ──────────────────────────────────────────────────────────
+// ─── Mini Price Chart ─────────────────────────────────────────────────────────
 function PriceChart({ history }) {
   const [hovered, setHovered] = useState(null);
   if (!history || history.length === 0) {
@@ -228,7 +228,7 @@ function PriceChart({ history }) {
 }
 
 // ─── Property Detail Modal ────────────────────────────────────────────────────
-function PropertyDetailModal({ propertyId, onClose, onApply }) {
+function PropertyDetailModal({ propertyId, onClose, onApply, onBuy }) {
   const [property,     setProperty]     = useState(null);
   const [priceHistory, setPriceHistory] = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -270,6 +270,7 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
   const mainImg  = images[imgIndex] || PLACEHOLDER;
   const badge    = listingBadge(property?.listingType||property?.listing_type);
   const isRent   = ["RENT","BOTH"].includes(property?.listingType||property?.listing_type);
+  const isSale   = ["SALE","BOTH"].includes(property?.listingType||property?.listing_type);
   const addr     = property?.address;
   const addrStr  = [addr?.street,addr?.city,addr?.country].filter(Boolean).join(", ");
   const features = property?.features || [];
@@ -360,6 +361,9 @@ function PropertyDetailModal({ propertyId, onClose, onApply }) {
                   <button style={{display:"flex",alignItems:"center",gap:"7px",background:"rgba(255,255,255,0.15)",color:"#fff",border:"1.5px solid rgba(255,255,255,0.35)",borderRadius:"10px",padding:"10px 18px",fontSize:"13.5px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}><PhoneIcon /> Request Viewing</button>
                   {isRent&&(property.status==="AVAILABLE"||!property.status)&&(
                     <button onClick={()=>{onClose();onApply(property);}} style={{display:"flex",alignItems:"center",gap:"7px",background:"#c9a84c",color:"#1f1f1f",border:"none",borderRadius:"10px",padding:"10px 18px",fontSize:"13.5px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🔑 Apliko për Qira</button>
+                  )}
+                  {isSale&&(property.status==="AVAILABLE"||!property.status)&&(
+                    <button onClick={()=>{onClose();onBuy(property);}} style={{display:"flex",alignItems:"center",gap:"7px",background:"#2a6049",color:"#fff",border:"none",borderRadius:"10px",padding:"10px 18px",fontSize:"13.5px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🏠 Apliko për Blerje</button>
                   )}
                 </div>
               </div>
@@ -492,15 +496,13 @@ function RentalApplyModal({ property, onClose, onSuccess, notify }) {
   );
 }
 
-// ─── My Applications Modal ────────────────────────────────────────────────────
-// NOTE: CANCELLED shows only the status badge — no reason text shown.
-// REJECTED also shows no reason text per requirement.
-function MyApplicationsModal({ onClose, notify }) {
-  const [apps,       setApps]       = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [page,       setPage]       = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [cancelling, setCancelling] = useState(null);
+// ─── Sale Buy Modal ───────────────────────────────────────────────────────────
+function SaleBuyModal({ property, onClose, onSuccess, notify }) {
+  const [listings, setListings]   = useState([]);
+  const [loadingL, setLoadingL]   = useState(true);
+  const [selectedL, setSelectedL] = useState(null);
+  const [form, setForm]           = useState({ message:"", offer_price:"", desired_purchase_date:"", monthly_income:"" });
+  const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
     const h = (e) => e.key==="Escape" && onClose();
@@ -508,27 +510,172 @@ function MyApplicationsModal({ onClose, notify }) {
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  const loadApps = useCallback(async (pg=0) => {
-    setLoading(true);
+  useEffect(() => {
+    const load = async () => {
+      setLoadingL(true);
+      try {
+        const res = await api.get(`/api/sales/listings/property/${property.id}`);
+        const active = (Array.isArray(res.data)?res.data:[]).filter(l=>l.status==="ACTIVE");
+        setListings(active);
+        if (active.length===1) setSelectedL(active[0]);
+      } catch { notify("Nuk u ngarkuan listings-et e shitjes","error"); }
+      finally { setLoadingL(false); }
+    };
+    load();
+  }, [property.id, notify]);
+
+  const handleSubmit = async () => {
+    if (!selectedL) { notify("Zgjidh një listing","error"); return; }
+    setSaving(true);
+    try {
+      await api.post("/api/sales/applications", {
+        listing_id: selectedL.id,
+        message: form.message||null,
+        offer_price: form.offer_price?Number(form.offer_price):null,
+        desired_purchase_date: form.desired_purchase_date||null,
+        monthly_income: form.monthly_income?Number(form.monthly_income):null,
+      });
+      onSuccess();
+    } catch (err) { notify(err.response?.data?.message||"Gabim gjatë aplikimit për blerje","error"); }
+    finally { setSaving(false); }
+  };
+
+  const fmtPrice = (v) => v!=null?`€${Number(v).toLocaleString("de-DE")}`:"—";
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(15,23,42,0.55)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{width:"100%",maxWidth:540,background:"#fff",borderRadius:16,boxShadow:"0 20px 60px rgba(15,23,42,0.2)",maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{padding:"18px 24px",borderBottom:"1px solid #e8edf4",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <p style={{fontWeight:700,fontSize:15,margin:"0 0 3px"}}>🏠 Apliko për Blerje</p>
+            <p style={{fontSize:12.5,color:"#64748b",margin:0}}>{property.title}</p>
+          </div>
+          <button onClick={onClose} style={{border:"none",background:"none",color:"#94a3b8",cursor:"pointer",fontSize:16,padding:"4px"}}>✕</button>
+        </div>
+        <div style={{padding:"20px 24px"}}>
+          <div style={{marginBottom:18}}>
+            <label style={S.label}>Listing i shitjes <span style={{color:"#ef4444"}}>*</span></label>
+            {loadingL?<div style={{padding:"14px",textAlign:"center",color:"#94a3b8",fontSize:13}}>Duke ngarkuar listings...</div>
+            :listings.length===0?<div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"12px 14px",fontSize:13,color:"#c2410c"}}>⚠️ Nuk ka listings aktive për shitje për këtë pronë aktualisht.</div>
+            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {listings.map(l=>(
+                <div key={l.id} onClick={()=>setSelectedL(l)} style={{padding:"12px 14px",borderRadius:10,cursor:"pointer",border:`2px solid ${selectedL?.id===l.id?"#2a6049":"#e2e8f0"}`,background:selectedL?.id===l.id?"#edf5f0":"#f8fafc",transition:"all 0.15s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <p style={{fontWeight:600,fontSize:13.5,margin:"0 0 3px"}}>{l.title||`Listing #${l.id}`}</p>
+                      <p style={{fontSize:12,color:"#64748b",margin:0}}>
+                        Çmimi: {fmtPrice(l.price)}
+                        {l.negotiable&&" · Negociueshëm"}
+                      </p>
+                      {l.highlights&&<p style={{fontSize:11.5,color:"#94a3b8",margin:"3px 0 0"}}>{l.highlights}</p>}
+                    </div>
+                    {selectedL?.id===l.id&&<div style={{width:20,height:20,borderRadius:"50%",background:"#2a6049",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700,flexShrink:0}}>✓</div>}
+                  </div>
+                </div>
+              ))}
+            </div>}
+          </div>
+          {listings.length>0&&<>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+              <div>
+                <label style={S.label}>Oferta juaj (€) — opsionale</label>
+                <input className="form-input" type="number" min="0" placeholder="p.sh. 120000" value={form.offer_price} onChange={e=>setForm(f=>({...f,offer_price:e.target.value}))}/>
+              </div>
+              <div>
+                <label style={S.label}>Të ardhura mujore (€) — opsionale</label>
+                <input className="form-input" type="number" min="0" placeholder="p.sh. 3000" value={form.monthly_income} onChange={e=>setForm(f=>({...f,monthly_income:e.target.value}))}/>
+              </div>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={S.label}>Data e dëshiruar e blerjes — opsionale</label>
+              <input className="form-input" type="date" value={form.desired_purchase_date} onChange={e=>setForm(f=>({...f,desired_purchase_date:e.target.value}))} style={{width:"100%",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label style={S.label}>Mesazh — opsionale</label>
+              <textarea rows={3} placeholder="Prezantohuni dhe shpjegoni interesin tuaj..." value={form.message} onChange={e=>setForm(f=>({...f,message:e.target.value}))}
+                style={{width:"100%",padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:10,fontSize:14,fontFamily:"inherit",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+          </>}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+            <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
+            <button onClick={handleSubmit} disabled={saving||listings.length===0||!selectedL}
+              style={{padding:"9px 20px",borderRadius:10,background:"#2a6049",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:saving||listings.length===0||!selectedL?0.6:1}}>
+              {saving?"Duke dërguar...":"Dërgo Aplikimin"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── My Applications Modal (me 2 tab: Qira + Blerje) ─────────────────────────
+function MyApplicationsModal({ onClose, notify }) {
+  const [tab, setTab] = useState("rent");
+
+  // Rent state
+  const [rentApps,    setRentApps]    = useState([]);
+  const [rentLoading, setRentLoading] = useState(true);
+  const [rentPage,    setRentPage]    = useState(0);
+  const [rentTotal,   setRentTotal]   = useState(0);
+  const [cancelling,  setCancelling]  = useState(null);
+
+  // Sale state
+  const [saleApps,    setSaleApps]    = useState([]);
+  const [saleLoading, setSaleLoading] = useState(true);
+  const [salePage,    setSalePage]    = useState(0);
+  const [saleTotal,   setSaleTotal]   = useState(0);
+  const [cancelSale,  setCancelSale]  = useState(null);
+
+  useEffect(() => {
+    const h = (e) => e.key==="Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  const loadRent = useCallback(async (pg=0) => {
+    setRentLoading(true);
     try {
       const res = await api.get(`/api/rentals/applications/my?page=${pg}&size=10`);
-      setApps(res.data.content||[]);
-      setTotalPages(res.data.totalPages||0);
-      setPage(pg);
-    } catch { notify("Gabim gjatë ngarkimit","error"); }
-    finally  { setLoading(false); }
+      setRentApps(res.data.content||[]);
+      setRentTotal(res.data.totalPages||0);
+      setRentPage(pg);
+    } catch { notify("Gabim gjatë ngarkimit të aplikimeve të qirasë","error"); }
+    finally  { setRentLoading(false); }
   }, [notify]);
 
-  useEffect(() => { loadApps(0); }, [loadApps]);
+  const loadSale = useCallback(async (pg=0) => {
+    setSaleLoading(true);
+    try {
+      const res = await api.get(`/api/sales/applications/my?page=${pg}&size=10`);
+      setSaleApps(res.data.content||[]);
+      setSaleTotal(res.data.totalPages||0);
+      setSalePage(pg);
+    } catch { notify("Gabim gjatë ngarkimit të aplikimeve të blerjes","error"); }
+    finally  { setSaleLoading(false); }
+  }, [notify]);
 
-  const handleCancel = async (appId) => {
+  useEffect(() => { loadRent(0); loadSale(0); }, [loadRent, loadSale]);
+
+  const handleCancelRent = async (appId) => {
     setCancelling(appId);
     try {
       await api.patch(`/api/rentals/applications/${appId}/cancel`);
-      notify("Aplikimi u anulua");
-      loadApps(page);
+      notify("Aplikimi i qirasë u anulua");
+      loadRent(rentPage);
     } catch (err) { notify(err.response?.data?.message||"Gabim","error"); }
     finally { setCancelling(null); }
+  };
+
+  const handleCancelSale = async (appId) => {
+    setCancelSale(appId);
+    try {
+      await api.patch(`/api/sales/applications/${appId}/cancel`);
+      notify("Aplikimi i blerjes u anulua");
+      loadSale(salePage);
+    } catch (err) { notify(err.response?.data?.message||"Gabim","error"); }
+    finally { setCancelSale(null); }
   };
 
   const STATUS_STYLE = {
@@ -539,81 +686,152 @@ function MyApplicationsModal({ onClose, notify }) {
   };
   const fmtDT  = (d) => d?new Date(d).toLocaleDateString("sq-AL"):"—";
   const fmtMon = (v) => v!=null?`€${Number(v).toLocaleString("de-DE")}`:"—";
+  const tabStyle = (active) => ({
+    flex:1, padding:"10px 0", border:"none", background:"none", cursor:"pointer",
+    fontFamily:"inherit", fontSize:13.5, fontWeight:active?700:500,
+    color:active?"#2a6049":"#94a3b8",
+    borderBottom:`2px solid ${active?"#2a6049":"transparent"}`,
+    transition:"all 0.15s",
+  });
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(15,23,42,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{width:"100%",maxWidth:640,background:"#fff",borderRadius:16,boxShadow:"0 20px 60px rgba(15,23,42,0.2)",maxHeight:"90vh",overflowY:"auto"}}>
-        <div style={{padding:"18px 24px",borderBottom:"1px solid #e8edf4",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <p style={{fontWeight:700,fontSize:15,margin:0}}>📋 Aplikimet e Mia</p>
-          <button onClick={onClose} style={{border:"none",background:"none",color:"#94a3b8",cursor:"pointer",fontSize:16}}>✕</button>
+      <div style={{width:"100%",maxWidth:660,background:"#fff",borderRadius:16,boxShadow:"0 20px 60px rgba(15,23,42,0.2)",maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{padding:"18px 24px 0",borderBottom:"1px solid #e8edf4"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <p style={{fontWeight:700,fontSize:15,margin:0}}>📋 Aplikimet e Mia</p>
+            <button onClick={onClose} style={{border:"none",background:"none",color:"#94a3b8",cursor:"pointer",fontSize:16}}>✕</button>
+          </div>
+          <div style={{display:"flex"}}>
+            <button style={tabStyle(tab==="rent")} onClick={()=>setTab("rent")}>🔑 Qira</button>
+            <button style={tabStyle(tab==="sale")} onClick={()=>setTab("sale")}>🏠 Blerje</button>
+          </div>
         </div>
+
         <div style={{padding:"20px 24px"}}>
-          {loading?(
-            <div style={{textAlign:"center",padding:32}}>
-              <div style={{width:28,height:28,margin:"0 auto",border:"3px solid #e8edf4",borderTop:"3px solid #6366f1",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
-            </div>
-          ):apps.length===0?(
-            <div style={{textAlign:"center",padding:"48px 20px",color:"#94a3b8"}}>
-              <div style={{fontSize:40,marginBottom:10}}>📭</div>
-              <p style={{fontSize:14}}>Nuk keni dërguar aplikime akoma.</p>
-            </div>
-          ):(
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {apps.map(app=>{
-                const s = STATUS_STYLE[app.status]||{bg:"#f1f5f9",color:"#64748b"};
-                return (
-                  <div key={app.id} style={{background:"#f8fafc",border:"1px solid #e8edf4",borderRadius:10,padding:"14px 16px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <div>
-                        <p style={{fontWeight:600,fontSize:13.5,margin:"0 0 3px"}}>Listing #{app.listing_id}</p>
-                        <p style={{fontSize:12,color:"#64748b",margin:0}}>
-                          {fmtDT(app.created_at)}
-                          {app.income&&` · Të ardhura: ${fmtMon(app.income)}`}
-                          {app.move_in_date&&` · Hyrja: ${fmtDT(app.move_in_date)}`}
-                        </p>
+          {/* ── RENT TAB ── */}
+          {tab==="rent"&&(
+            <>
+              {rentLoading?(
+                <div style={{textAlign:"center",padding:32}}>
+                  <div style={{width:28,height:28,margin:"0 auto",border:"3px solid #e8edf4",borderTop:"3px solid #6366f1",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
+                </div>
+              ):rentApps.length===0?(
+                <div style={{textAlign:"center",padding:"48px 20px",color:"#94a3b8"}}>
+                  <div style={{fontSize:40,marginBottom:10}}>📭</div>
+                  <p style={{fontSize:14}}>Nuk keni dërguar aplikime qiraje akoma.</p>
+                </div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {rentApps.map(app=>{
+                    const s=STATUS_STYLE[app.status]||{bg:"#f1f5f9",color:"#64748b"};
+                    return (
+                      <div key={app.id} style={{background:"#f8fafc",border:"1px solid #e8edf4",borderRadius:10,padding:"14px 16px"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                          <div>
+                            <p style={{fontWeight:600,fontSize:13.5,margin:"0 0 3px"}}>Listing #{app.listing_id}</p>
+                            <p style={{fontSize:12,color:"#64748b",margin:0}}>
+                              {fmtDT(app.created_at)}
+                              {app.income&&` · Të ardhura: ${fmtMon(app.income)}`}
+                              {app.move_in_date&&` · Hyrja: ${fmtDT(app.move_in_date)}`}
+                            </p>
+                          </div>
+                          <span style={{background:s.bg,color:s.color,padding:"3px 10px",borderRadius:20,fontSize:11.5,fontWeight:600,flexShrink:0,marginLeft:8}}>{app.status}</span>
+                        </div>
+                        {app.message&&<p style={{fontSize:13,color:"#475569",margin:"6px 0",fontStyle:"italic"}}>"{app.message}"</p>}
+                        {app.status==="APPROVED"&&(
+                          <div style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:8,padding:"8px 12px",fontSize:12.5,color:"#047857",marginTop:8}}>
+                            🎉 Aplikimi juaj u aprovua! Agjenti do t'ju kontaktojë së shpejti.
+                          </div>
+                        )}
+                        {app.status==="CANCELLED"&&(
+                          <div style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:12.5,color:"#64748b",marginTop:8}}>
+                            Ky aplikim është anuluar.
+                          </div>
+                        )}
+                        {app.status==="PENDING"&&(
+                          <div style={{marginTop:10}}>
+                            <button className="btn btn--danger btn--sm" onClick={()=>handleCancelRent(app.id)} disabled={cancelling===app.id}>
+                              {cancelling===app.id?"Duke anuluar...":"Anulo aplikimin"}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <span style={{background:s.bg,color:s.color,padding:"3px 10px",borderRadius:20,fontSize:11.5,fontWeight:600,flexShrink:0,marginLeft:8}}>
-                        {app.status}
-                      </span>
-                    </div>
-                    {app.message&&<p style={{fontSize:13,color:"#475569",margin:"6px 0",fontStyle:"italic"}}>"{app.message}"</p>}
-
-                    {/* APPROVED — show success message */}
-                    {app.status==="APPROVED"&&(
-                      <div style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:8,padding:"8px 12px",fontSize:12.5,color:"#047857",marginTop:8}}>
-                        🎉 Aplikimi juaj u aprovua! Agjenti do t'ju kontaktojë së shpejti.
-                      </div>
-                    )}
-
-                    {/* CANCELLED — show ONLY that it was cancelled, no reason */}
-                    {app.status==="CANCELLED"&&(
-                      <div style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:12.5,color:"#64748b",marginTop:8}}>
-                        Ky aplikim është anuluar.
-                      </div>
-                    )}
-
-                    {/* REJECTED — no reason shown at all */}
-
-                    {/* Cancel button — only for PENDING */}
-                    {app.status==="PENDING"&&(
-                      <div style={{marginTop:10}}>
-                        <button className="btn btn--danger btn--sm" onClick={()=>handleCancel(app.id)} disabled={cancelling===app.id}>
-                          {cancelling===app.id?"Duke anuluar...":"Anulo aplikimin"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+              {rentTotal>1&&(
+                <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:16}}>
+                  <button className="btn btn--secondary btn--sm" disabled={rentPage===0} onClick={()=>loadRent(rentPage-1)}>← Prev</button>
+                  <span style={{fontSize:13,color:"#64748b",padding:"6px 8px"}}>{rentPage+1} / {rentTotal}</span>
+                  <button className="btn btn--secondary btn--sm" disabled={rentPage>=rentTotal-1} onClick={()=>loadRent(rentPage+1)}>Next →</button>
+                </div>
+              )}
+            </>
           )}
-          {totalPages>1&&(
-            <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:16}}>
-              <button className="btn btn--secondary btn--sm" disabled={page===0} onClick={()=>loadApps(page-1)}>← Prev</button>
-              <span style={{fontSize:13,color:"#64748b",padding:"6px 8px"}}>{page+1} / {totalPages}</span>
-              <button className="btn btn--secondary btn--sm" disabled={page>=totalPages-1} onClick={()=>loadApps(page+1)}>Next →</button>
-            </div>
+
+          {/* ── SALE TAB ── */}
+          {tab==="sale"&&(
+            <>
+              {saleLoading?(
+                <div style={{textAlign:"center",padding:32}}>
+                  <div style={{width:28,height:28,margin:"0 auto",border:"3px solid #e8edf4",borderTop:"3px solid #2a6049",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
+                </div>
+              ):saleApps.length===0?(
+                <div style={{textAlign:"center",padding:"48px 20px",color:"#94a3b8"}}>
+                  <div style={{fontSize:40,marginBottom:10}}>📭</div>
+                  <p style={{fontSize:14}}>Nuk keni dërguar aplikime blerje akoma.</p>
+                </div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {saleApps.map(app=>{
+                    const s=STATUS_STYLE[app.status]||{bg:"#f1f5f9",color:"#64748b"};
+                    return (
+                      <div key={app.id} style={{background:"#f8fafc",border:"1px solid #e8edf4",borderRadius:10,padding:"14px 16px"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                          <div>
+                            <p style={{fontWeight:600,fontSize:13.5,margin:"0 0 3px"}}>Listing #{app.listing_id} — Pronë #{app.property_id}</p>
+                            <p style={{fontSize:12,color:"#64748b",margin:0}}>
+                              {fmtDT(app.created_at)}
+                              {app.offer_price&&` · Oferta: ${fmtMon(app.offer_price)}`}
+                              {app.desired_purchase_date&&` · Blerja: ${fmtDT(app.desired_purchase_date)}`}
+                            </p>
+                          </div>
+                          <span style={{background:s.bg,color:s.color,padding:"3px 10px",borderRadius:20,fontSize:11.5,fontWeight:600,flexShrink:0,marginLeft:8}}>{app.status}</span>
+                        </div>
+                        {app.message&&<p style={{fontSize:13,color:"#475569",margin:"6px 0",fontStyle:"italic"}}>"{app.message}"</p>}
+                        {app.status==="APPROVED"&&(
+                          <div style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:8,padding:"8px 12px",fontSize:12.5,color:"#047857",marginTop:8}}>
+                            🎉 Aplikimi juaj u aprovua! Agjenti do t'ju kontaktojë për të vazhduar blerjen.
+                          </div>
+                        )}
+                        {app.status==="CANCELLED"&&(
+                          <div style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontSize:12.5,color:"#64748b",marginTop:8}}>
+                            Ky aplikim është anuluar.
+                          </div>
+                        )}
+                        {app.status==="PENDING"&&(
+                          <div style={{marginTop:10}}>
+                            <button className="btn btn--danger btn--sm" onClick={()=>handleCancelSale(app.id)} disabled={cancelSale===app.id}>
+                              {cancelSale===app.id?"Duke anuluar...":"Anulo aplikimin"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {saleTotal>1&&(
+                <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:16}}>
+                  <button className="btn btn--secondary btn--sm" disabled={salePage===0} onClick={()=>loadSale(salePage-1)}>← Prev</button>
+                  <span style={{fontSize:13,color:"#64748b",padding:"6px 8px"}}>{salePage+1} / {saleTotal}</span>
+                  <button className="btn btn--secondary btn--sm" disabled={salePage>=saleTotal-1} onClick={()=>loadSale(salePage+1)}>Next →</button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -621,14 +839,14 @@ function MyApplicationsModal({ onClose, notify }) {
   );
 }
 
-// ─── Property Card ─────────────────────────────────────────────────────────────
-// savedIds: Set<number> — IDs e pronave të ruajtura nga backend
-function PropertyCard({ property, viewMode, onOpen, onApply, onSaveToggle, savedIds }) {
+// ─── Property Card ────────────────────────────────────────────────────────────
+function PropertyCard({ property, viewMode, onOpen, onApply, onBuy, onSaveToggle, savedIds }) {
   const badge    = listingBadge(property.listing_type||property.listingType);
   const imageSrc = property.primaryImage||property.primary_image||property.imageUrl;
   const img      = imageSrc?(imageSrc.startsWith("http")?imageSrc:BASE_URL+imageSrc):PLACEHOLDER;
   const isGrid   = viewMode==="grid";
   const isRent   = ["RENT","BOTH"].includes(property.listing_type||property.listingType);
+  const isSale   = ["SALE","BOTH"].includes(property.listing_type||property.listingType);
   const isSaved  = savedIds?.has(property.id);
 
   return (
@@ -643,24 +861,13 @@ function PropertyCard({ property, viewMode, onOpen, onApply, onSaveToggle, saved
           <span style={{background:badge.color,color:"#fff",fontSize:"11px",fontWeight:700,padding:"3px 9px",borderRadius:"20px"}}>{badge.label}</span>
           {(property.is_featured||property.isFeatured)&&<span style={{background:"#c9a84c",color:"#fff",fontSize:"11px",fontWeight:700,padding:"3px 8px",borderRadius:"20px",display:"flex",alignItems:"center",gap:"3px"}}><StarIcon /> Featured</span>}
         </div>
-
-        {/* ── Heart / Save button — calls /api/properties/saved/{id} ── */}
         <button
           onClick={e=>{e.stopPropagation(); onSaveToggle(property);}}
           title={isSaved?"Hiq nga të preferuarat":"Ruaj pronën"}
-          style={{
-            position:"absolute", top:"10px", right:"10px",
-            background: isSaved ? "#e74c3c" : "rgba(255,255,255,0.88)",
-            border:"none", borderRadius:"50%", width:"32px", height:"32px",
-            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-            boxShadow:"0 2px 8px rgba(0,0,0,0.18)",
-            color: isSaved ? "#fff" : "#c0392b",
-            transition:"all 0.18s",
-          }}
+          style={{position:"absolute",top:"10px",right:"10px",background:isSaved?"#e74c3c":"rgba(255,255,255,0.88)",border:"none",borderRadius:"50%",width:"32px",height:"32px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",color:isSaved?"#fff":"#c0392b",transition:"all 0.18s"}}
         >
           <HeartIcon filled={isSaved} />
         </button>
-
         <span style={{position:"absolute",bottom:"10px",right:"10px",background:"rgba(0,0,0,0.55)",color:"#fff",fontSize:"11px",padding:"2px 8px",borderRadius:"8px",backdropFilter:"blur(4px)"}}>{typeLabel(property.type)}</span>
       </div>
       <div style={{padding:isGrid?"16px":"16px 20px",flex:1,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
@@ -670,17 +877,28 @@ function PropertyCard({ property, viewMode, onOpen, onApply, onSaveToggle, saved
           <div style={{fontSize:isGrid?"18px":"20px",fontWeight:800,color:"#5a5f3a",marginBottom:"10px"}}>{formatPrice(property.price,property.currency)}</div>
         </div>
         <div>
-          <div style={{display:"flex",gap:"14px",color:"#6b6651",fontSize:"12.5px",flexWrap:"wrap",marginBottom:isRent&&property.status==="AVAILABLE"?"12px":0}}>
+          <div style={{display:"flex",gap:"14px",color:"#6b6651",fontSize:"12.5px",flexWrap:"wrap",marginBottom:(isRent||isSale)&&property.status==="AVAILABLE"?"12px":0}}>
             {property.bedrooms!=null&&<span style={{display:"flex",alignItems:"center",gap:"4px"}}><BedIcon/>{property.bedrooms} bed{property.bedrooms!==1?"s":""}</span>}
             {property.bathrooms!=null&&<span style={{display:"flex",alignItems:"center",gap:"4px"}}><BathIcon/>{property.bathrooms} bath{property.bathrooms!==1?"s":""}</span>}
             {(property.area_sqm??property.areaSqm)!=null&&<span style={{display:"flex",alignItems:"center",gap:"4px"}}><AreaIcon/>{property.area_sqm??property.areaSqm} m²</span>}
           </div>
-          {isRent&&property.status==="AVAILABLE"&&(
-            <button onClick={e=>{e.stopPropagation();onApply(property);}}
-              style={{width:"100%",padding:"8px 14px",borderRadius:8,background:"#5a5f3a",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"background 0.15s"}}
-              onMouseEnter={e=>e.target.style.background="#484e2e"} onMouseLeave={e=>e.target.style.background="#5a5f3a"}>
-              🔑 Apliko për Qira
-            </button>
+          {property.status==="AVAILABLE"&&(isRent||isSale)&&(
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {isRent&&(
+                <button onClick={e=>{e.stopPropagation();onApply(property);}}
+                  style={{width:"100%",padding:"8px 14px",borderRadius:8,background:"#5a5f3a",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"background 0.15s"}}
+                  onMouseEnter={e=>e.target.style.background="#484e2e"} onMouseLeave={e=>e.target.style.background="#5a5f3a"}>
+                  🔑 Apliko për Qira
+                </button>
+              )}
+              {isSale&&(
+                <button onClick={e=>{e.stopPropagation();onBuy(property);}}
+                  style={{width:"100%",padding:"8px 14px",borderRadius:8,background:"#2a6049",color:"#fff",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"background 0.15s"}}
+                  onMouseEnter={e=>e.target.style.background="#1e4a35"} onMouseLeave={e=>e.target.style.background="#2a6049"}>
+                  🏠 Apliko për Blerje
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -784,7 +1002,7 @@ function Skeleton({ viewMode }) {
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function BrowseProperties() {
   const { user } = useContext(AuthContext);
 
@@ -799,47 +1017,34 @@ export default function BrowseProperties() {
   const [totalElements,  setTotalElements]  = useState(0);
   const [viewMode,       setViewMode]       = useState("grid");
   const [mode,           setMode]           = useState("filter");
-
-  // ── Saved IDs — loaded from GET /api/properties/saved (all pages) ─────────
-  const [savedIds, setSavedIds] = useState(new Set());
+  const [savedIds,       setSavedIds]       = useState(new Set());
 
   const [selectedId,  setSelectedId]  = useState(null);
   const [applyTarget, setApplyTarget] = useState(null);
+  const [buyTarget,   setBuyTarget]   = useState(null);
   const [showMyApps,  setShowMyApps]  = useState(false);
   const [toast,       setToast]       = useState(null);
 
   const notify = useCallback((msg, type="success") => setToast({msg,type,key:Date.now()}), []);
 
-  // Load all saved property IDs on mount
-  // GET /api/properties/saved?page=0&size=200 — we load a large page to get all IDs
   useEffect(() => {
     const loadSavedIds = async () => {
       try {
         const res = await api.get("/api/properties/saved?page=0&size=500");
-        // Response is Page<SavedPropertyResponse> with flat fields:
-        // { savedId, propertyId, title, ... }
         const content = res.data?.content ?? [];
         setSavedIds(new Set(content.map(r => r.propertyId)));
-      } catch {
-        // silently fail — not critical, just means hearts won't show
-      }
+      } catch {}
     };
     loadSavedIds();
   }, []);
 
-  // ── Toggle save/unsave ────────────────────────────────────────────────────
-  // POST   /api/properties/saved/{propertyId}  → save
-  // DELETE /api/properties/saved/{propertyId}  → unsave
   const handleSaveToggle = useCallback(async (property) => {
     const isSaved = savedIds.has(property.id);
-
-    // Optimistic update
     setSavedIds(prev => {
       const next = new Set(prev);
       isSaved ? next.delete(property.id) : next.add(property.id);
       return next;
     });
-
     try {
       if (isSaved) {
         await api.delete(`/api/properties/saved/${property.id}`);
@@ -849,13 +1054,11 @@ export default function BrowseProperties() {
         notify("Prona u ruajt në të preferuara ❤️");
       }
     } catch (err) {
-      // Revert on error
       setSavedIds(prev => {
         const next = new Set(prev);
         isSaved ? next.add(property.id) : next.delete(property.id);
         return next;
       });
-      // 409 Conflict = already saved (idempotent — treat as success)
       if (err.response?.status === 409) {
         setSavedIds(prev => new Set([...prev, property.id]));
         return;
@@ -864,7 +1067,6 @@ export default function BrowseProperties() {
     }
   }, [savedIds, notify]);
 
-  // ── Fetch filtered ────────────────────────────────────────────────────────
   const fetchFiltered = useCallback(async (f, pg=0) => {
     setLoading(true); setError(null);
     try {
@@ -891,7 +1093,6 @@ export default function BrowseProperties() {
     finally  { setLoading(false); }
   }, []);
 
-  // ── Fetch search ──────────────────────────────────────────────────────────
   const fetchSearch = useCallback(async (keyword, pg=0) => {
     setLoading(true); setError(null);
     try {
@@ -962,7 +1163,6 @@ export default function BrowseProperties() {
           <div style={{display:"flex",gap:"24px",alignItems:"flex-start"}}>
             <FilterSidebar filters={pendingFilters} setFilters={setPendingFilters} onApply={handleApplyFilters} onReset={handleResetFilters}/>
             <main style={{flex:1,minWidth:0}}>
-              {/* Toolbar */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px",flexWrap:"wrap",gap:"10px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
                   <span style={{color:"#8a8469",fontSize:"13.5px"}}>{loading?"Loading…":`${totalElements.toLocaleString()} propert${totalElements!==1?"ies":"y"} found`}</span>
@@ -995,7 +1195,7 @@ export default function BrowseProperties() {
                   {properties.map(p=>(
                     <PropertyCard
                       key={p.id} property={p} viewMode={viewMode}
-                      onOpen={setSelectedId} onApply={setApplyTarget}
+                      onOpen={setSelectedId} onApply={setApplyTarget} onBuy={setBuyTarget}
                       onSaveToggle={handleSaveToggle} savedIds={savedIds}
                     />
                   ))}
@@ -1007,8 +1207,12 @@ export default function BrowseProperties() {
         </div>
       </div>
 
-      {selectedId&&<PropertyDetailModal propertyId={selectedId} onClose={()=>setSelectedId(null)} onApply={(property)=>{setSelectedId(null);setApplyTarget(property);}}/>}
+      {selectedId&&<PropertyDetailModal propertyId={selectedId} onClose={()=>setSelectedId(null)}
+        onApply={(p)=>{setSelectedId(null);setApplyTarget(p);}}
+        onBuy={(p)=>{setSelectedId(null);setBuyTarget(p);}}
+      />}
       {applyTarget&&<RentalApplyModal property={applyTarget} onClose={()=>setApplyTarget(null)} onSuccess={()=>{setApplyTarget(null);notify("Aplikimi u dërgua me sukses! 🎉");}} notify={notify}/>}
+      {buyTarget&&<SaleBuyModal property={buyTarget} onClose={()=>setBuyTarget(null)} onSuccess={()=>{setBuyTarget(null);notify("Aplikimi për blerje u dërgua me sukses! 🏠");}} notify={notify}/>}
       {showMyApps&&<MyApplicationsModal onClose={()=>setShowMyApps(false)} notify={notify}/>}
       {toast&&<Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
 
