@@ -15,6 +15,24 @@ const fmtDT    = (d) => d ? new Date(d).toLocaleString("sq-AL", {
   hour: "2-digit", minute: "2-digit" }) : "—";
 const fmtMoney = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
 
+// ─── Validim qendror ─────────────────────────────────────────────────────────
+function validateListingId(listingId, notify) {
+  if (!listingId || listingId.toString().trim() === "") {
+    notify("Shkruaj Listing ID", "error"); return false;
+  }
+  if (isNaN(Number(listingId)) || Number(listingId) <= 0) {
+    notify("Listing ID duhet të jetë numër pozitiv", "error"); return false;
+  }
+  return true;
+}
+
+function validateRejectionReason(reason, notify) {
+  if (reason && reason.length > 500) {
+    notify("Arsyeja e refuzimit nuk mund të kalojë 500 karaktere", "error"); return false;
+  }
+  return true;
+}
+
 // ─── Shared ───────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
@@ -78,10 +96,10 @@ function Pagination({ page, totalPages, onChange }) {
 }
 
 // ─── App Detail Modal ─────────────────────────────────────────────────────────
-function AppDetailModal({ app, onClose, onReview }) {
-  const [rejReason, setRejReason] = useState("");
-  const [showReject, setShowReject] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
+function AppDetailModal({ app, onClose, onReview, notify }) {
+  const [rejReason, setRejReason]     = useState("");
+  const [showReject, setShowReject]   = useState(false);
+  const [reviewing, setReviewing]     = useState(false);
 
   useEffect(() => {
     const h = (e) => e.key === "Escape" && onClose();
@@ -96,6 +114,7 @@ function AppDetailModal({ app, onClose, onReview }) {
   };
 
   const handleReject = async () => {
+    if (!validateRejectionReason(rejReason, notify)) return;
     setReviewing(true);
     await onReview(app.id, "REJECTED", rejReason || null);
     setReviewing(false);
@@ -119,7 +138,6 @@ function AppDetailModal({ app, onClose, onReview }) {
         </div>
 
         <div style={{ padding: "22px 24px" }}>
-          {/* Status */}
           <div style={{ display: "flex", justifyContent: "space-between",
             alignItems: "center", marginBottom: 20,
             background: "#f8fafc", borderRadius: 10, padding: "12px 16px" }}>
@@ -131,7 +149,6 @@ function AppDetailModal({ app, onClose, onReview }) {
             )}
           </div>
 
-          {/* Details grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
             {[
               { label: "Client ID",     value: `#${app.client_id}` },
@@ -172,7 +189,6 @@ function AppDetailModal({ app, onClose, onReview }) {
             </div>
           )}
 
-          {/* Actions */}
           {app.status === "PENDING" && (
             <div style={{ borderTop: "1px solid #e8edf4", paddingTop: 18 }}>
               {!showReject ? (
@@ -191,16 +207,23 @@ function AppDetailModal({ app, onClose, onReview }) {
               ) : (
                 <div>
                   <p style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 8 }}>
-                    Arsyeja e refuzimit (opcionale):
+                    Arsyeja e refuzimit <span style={{ color: "#94a3b8", fontWeight: 400 }}>(opcionale, max 500 karaktere)</span>:
                   </p>
-                  <textarea value={rejReason} onChange={e => setRejReason(e.target.value)}
+                  <textarea value={rejReason}
+                    onChange={e => setRejReason(e.target.value)}
                     rows={3} placeholder="Shkruaj arsyen e refuzimit..."
+                    maxLength={500}
                     style={{ width: "100%", padding: "9px 12px", border: "1px solid #cbd5e1",
                       borderRadius: 10, fontSize: 14, fontFamily: "inherit",
-                      resize: "vertical", outline: "none", marginBottom: 10 }} />
+                      resize: "vertical", outline: "none", marginBottom: 6 }} />
+                  <p style={{ fontSize: 11, color: "#94a3b8", textAlign: "right", marginBottom: 10 }}>
+                    {rejReason.length}/500
+                  </p>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button className="btn btn--secondary"
-                      onClick={() => setShowReject(false)}>Anulo</button>
+                      onClick={() => { setShowReject(false); setRejReason(""); }}>
+                      Anulo
+                    </button>
                     <button className="btn btn--danger"
                       onClick={handleReject} disabled={reviewing}>
                       Konfirmo refuzimin
@@ -217,76 +240,44 @@ function AppDetailModal({ app, onClose, onReview }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════════
 export default function AgentRentalApplications() {
-  const [selectedListingId, setSelectedListingId] = useState("");
-  const [listings, setListings] = useState([]);
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingListings, setLoadingListings] = useState(true);
-  const [selectedApp, setSelectedApp] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [listingId, setListingId]         = useState("");
+  const [applications, setApplications]   = useState([]);
+  const [loading, setLoading]             = useState(false);
+  const [selectedApp, setSelectedApp]     = useState(null);
+  const [toast, setToast]                 = useState(null);
 
-  // Stats
   const stats = {
-    total:     applications.length,
-    pending:   applications.filter(a => a.status === "PENDING").length,
-    approved:  applications.filter(a => a.status === "APPROVED").length,
-    rejected:  applications.filter(a => a.status === "REJECTED").length,
+    total:    applications.length,
+    pending:  applications.filter(a => a.status === "PENDING").length,
+    approved: applications.filter(a => a.status === "APPROVED").length,
+    rejected: applications.filter(a => a.status === "REJECTED").length,
   };
 
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
 
-  // Fetch all rental listings on mount
-  useEffect(() => {
-    const fetchListings = async () => {
-      setLoadingListings(true);
-      try {
-        const res = await api.get("/api/rentals/listings?page=0&size=100&sortBy=createdAt&sortDir=desc");
-        setListings(res.data.content || []);
-      } catch (err) {
-        console.error("Gabim gjatë ngarkimit të listings", err);
-      } finally {
-        setLoadingListings(false);
-      }
-    };
-    fetchListings();
-  }, []);
-
-  const fetchApplications = async (listingId) => {
-    if (!listingId) return;
+  const fetchApplications = async () => {
+    if (!validateListingId(listingId, notify)) return;
     setLoading(true);
     try {
-      const res = await api.get(`/api/rentals/applications/listing/${listingId}`);
+      const res = await api.get(`/api/rentals/applications/listing/${Number(listingId)}`);
       setApplications(Array.isArray(res.data) ? res.data : []);
-      if (res.data.length === 0) {
-        notify("Nuk ka aplikime për këtë listing", "info");
-      }
     } catch {
-      notify("Gabim — nuk mund të ngarkohen aplikimet", "error");
-      setApplications([]);
+      notify("Gabim — listing nuk u gjet ose nuk ka aplikime", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleListingChange = (e) => {
-    const value = e.target.value;
-    setSelectedListingId(value);
-    if (value) {
-      fetchApplications(value);
-    } else {
-      setApplications([]);
-    }
-  };
-
   const handleReview = async (appId, status, reason) => {
+    // Validim edhe këtu para dërgimit
+    if (status === "REJECTED" && !validateRejectionReason(reason, notify)) return;
+
     try {
       await api.patch(`/api/rentals/applications/${appId}/review`, {
         status,
-        rejection_reason: reason,
+        rejection_reason: reason || null,
       });
       setApplications(prev => prev.map(a =>
         a.id === appId ? { ...a, status, rejection_reason: reason } : a
@@ -300,16 +291,11 @@ export default function AgentRentalApplications() {
     }
   };
 
-  const getListingDisplayText = (listing) => {
-    const title = listing.title || `Property #${listing.property_id}`;
-    return `${title}`;
-  };
-
   const statCards = [
-    { label: "Total",    value: stats.total,    color: "#6366f1", bg: "#eef2ff" },
-    { label: "Pending",  value: stats.pending,  color: "#d97706", bg: "#fffbeb" },
-    { label: "Approved", value: stats.approved, color: "#059669", bg: "#ecfdf5" },
-    { label: "Rejected", value: stats.rejected, color: "#dc2626", bg: "#fef2f2" },
+    { label: "Total",    value: stats.total,    color: "#6366f1" },
+    { label: "Pending",  value: stats.pending,  color: "#d97706" },
+    { label: "Approved", value: stats.approved, color: "#059669" },
+    { label: "Rejected", value: stats.rejected, color: "#dc2626" },
   ];
 
   return (
@@ -326,29 +312,32 @@ export default function AgentRentalApplications() {
         </div>
       </div>
 
-      {/* Dropdown selector */}
+      {/* Search bar */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ padding: "18px 20px" }}>
-          <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Zgjidh Rental Listing</p>
-          <select
-            className="form-select"
-            value={selectedListingId}
-            onChange={handleListingChange}
-            disabled={loadingListings}
-            style={{ width: "100%", maxWidth: 400 }}
-          >
-            <option value="">-- Zgjidh një listing --</option>
-            {listings.map(listing => (
-              <option key={listing.id} value={listing.id}>
-                {getListingDisplayText(listing)}
-              </option>
-            ))}
-          </select>
-          {loadingListings && <div style={{ marginTop: 8 }}><Loader /></div>}
+        <div style={{ padding: "18px 20px", display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
+              Listing ID <span style={{ color: "#ef4444" }}>*</span>
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="form-input" type="number" min="1"
+                style={{ width: 160, height: 36 }}
+                placeholder="p.sh. 42"
+                value={listingId}
+                onChange={e => setListingId(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && fetchApplications()} />
+              <button className="btn btn--primary" onClick={fetchApplications} disabled={loading}>
+                {loading ? "Duke ngarkuar..." : "Shiko aplikimet"}
+              </button>
+            </div>
+            <p style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 4 }}>
+              Duhet të jetë numër pozitiv
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Stats — show only when there are applications */}
+      {/* Stats */}
       {applications.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)",
           gap: 14, marginBottom: 20 }}>
@@ -365,17 +354,23 @@ export default function AgentRentalApplications() {
       <div className="card">
         <div className="card__header">
           <h2 className="card__title">
-            {selectedListingId && listings.find(l => l.id == selectedListingId)
-              ? `Aplikimet për: ${listings.find(l => l.id == selectedListingId)?.title || `Listing #${selectedListingId}`}`
+            {listingId && applications.length > 0
+              ? `Aplikimet për Listing #${listingId}`
               : "Aplikimet"}
           </h2>
+          {applications.length > 0 && (
+            <span style={{ background: "#eef2ff", color: "#6366f1",
+              padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 500 }}>
+              {applications.length}
+            </span>
+          )}
         </div>
 
         {loading ? <Loader /> : applications.length === 0 ? (
-          <EmptyState 
-            icon="📝"
-            text={selectedListingId ? "Nuk ka aplikime për këtë listing" : "Zgjidh një listing nga lista për të parë aplikimet"} 
-          />
+          <EmptyState icon="📝"
+            text={listingId
+              ? "Nuk ka aplikime për këtë listing"
+              : "Shkruaj Listing ID për të shikuar aplikimet"} />
         ) : (
           <div className="table-wrap">
             <table className="table">
@@ -424,6 +419,7 @@ export default function AgentRentalApplications() {
                               onClick={() => handleReview(app.id, "APPROVED", null)}>
                               ✓
                             </button>
+                            {/* Refuzimi hap modal për arsye */}
                             <button className="btn btn--danger btn--sm"
                               onClick={() => setSelectedApp(app)}>✕</button>
                           </>
@@ -443,6 +439,7 @@ export default function AgentRentalApplications() {
           app={selectedApp}
           onClose={() => setSelectedApp(null)}
           onReview={handleReview}
+          notify={notify}
         />
       )}
 
