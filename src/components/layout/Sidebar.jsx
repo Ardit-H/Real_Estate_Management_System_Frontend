@@ -1,334 +1,241 @@
 import { useContext } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { AuthContext } from "../../context/AuthProvider";
- 
+
 const NAV_CONFIG = {
   admin: [
-    {
-      group: "Overview",
-      items: [
-        { to: "/admin/dashboard", label: "Dashboard", icon: "grid" },
-        { to: "/admin/audit-logs", label: "Audit Logs", icon: "file-text" },
-      ],
-    },
-    {
-      group: "Properties",
-      items: [
-        { to: "/admin/AllProperties", label: "All Properties", icon: "home" },
-        { to: "/admin/sales", label: "Sales", icon: "tag" },
-        { to: "/admin/rentals", label: "Rentals", icon: "key" },
-      ],
-    },
-    {
-      group: "People",
-      items: [
-        { to: "/admin/agents", label: "Agents", icon: "users" },
-        { to: "/admin/clients", label: "Clients", icon: "user" },
-        { to: "/admin/leads", label: "Leads", icon: "target" },
-      ],
-    },
-    {
-      group: "Operations",
-      items: [
-        { to: "/admin/contracts", label: "Contracts", icon: "file" },
-        { to: "/admin/payments", label: "Payments", icon: "credit-card" },
-        { to: "/admin/maintenance", label: "Maintenance", icon: "tool" },
-        { to: "/admin/notifications", label: "Notifications", icon: "bell" },
-      ],
-    },
-    {
-      group: "System",
-      items: [
-        { to: "/admin/background-jobs", label: "Background Jobs", icon: "cpu" },
-        { to: "/admin/settings", label: "Settings", icon: "settings" },
-      ],
-    },
+    { group: "Overview", items: [
+      { to: "/admin/dashboard",       label: "Dashboard",        emoji: "◼" },
+      { to: "/admin/audit-logs",      label: "Audit Logs",       emoji: "📋" },
+    ]},
+    { group: "Properties", items: [
+      { to: "/admin/AllProperties",   label: "All Properties",   emoji: "🏢" },
+      { to: "/admin/sales",           label: "Sales",            emoji: "💰" },
+      { to: "/admin/rentals",         label: "Rentals",          emoji: "🔑" },
+    ]},
+    { group: "People", items: [
+      { to: "/admin/agents",          label: "Agents",           emoji: "🤝" },
+      { to: "/admin/clients",         label: "Clients",          emoji: "👤" },
+      { to: "/admin/leads",           label: "Leads",            emoji: "🎯" },
+    ]},
+    { group: "Operations", items: [
+      { to: "/admin/contracts",       label: "Contracts",        emoji: "📄" },
+      { to: "/admin/payments",        label: "Payments",         emoji: "💳" },
+      { to: "/admin/maintenance",     label: "Maintenance",      emoji: "🔧" },
+      { to: "/admin/notifications",   label: "Notifications",    emoji: "🔔" },
+    ]},
+    { group: "System", items: [
+      { to: "/admin/background-jobs", label: "Background Jobs",  emoji: "⚙️" },
+      { to: "/admin/settings",        label: "Settings",         emoji: "🛠️" },
+    ]},
   ],
- 
   agent: [
-    {
-      group: "Overview",
-      items: [
-        { to: "/agent", label: "Dashboard", icon: "grid" },
-        { to: "/agent/my-stats", label: "My Performance", icon: "trending-up" },
-      ],
-    },
-    {
-      group: "Listings",
-      items: [
-        { to: "/agent/properties", label: "Properties", icon: "home" },
-        { to: "/agent/sales", label: "Sale Listings", icon: "tag" },
-        { to: "/agent/rentals", label: "Rental Listings", icon: "key" },
-      ],
-    },
-    {
-      group: "Clients",
-      items: [
-        { to: "/agent/leads", label: "My Leads", icon: "target" },
-        { to: "/agent/clients", label: "My Clients", icon: "users" },
-        { to: "/agent/applications", label: "Applications", icon: "clipboard" },
-      ],
-    },
-    {
-      group: "Contracts & Finance",
-      items: [
-        { to: "/agent/contracts", label: "Contracts", icon: "file" },
-        { to: "/agent/payments", label: "Payments", icon: "credit-card" },
-        { to: "/agent/maintenance", label: "Maintenance", icon: "tool" },
-      ],
-    },
-    {
-      group: "Tools",
-      items: [
-        { to: "/agent/ai-assistant", label: "AI Assistant", icon: "cpu" },
-        { to: "/agent/notifications", label: "Notifications", icon: "bell" },
-      ],
-    },
+    { group: "Overview", items: [
+      { to: "/agent",                 label: "Dashboard",        emoji: "◼" },
+      { to: "/agent/my-stats",        label: "My Performance",   emoji: "📈" },
+    ]},
+    { group: "Listings", items: [
+      { to: "/agent/properties",      label: "Properties",       emoji: "🏢" },
+      { to: "/agent/sales",           label: "Sale Listings",    emoji: "💰" },
+      { to: "/agent/rentals",         label: "Rental Listings",  emoji: "🔑" },
+    ]},
+    { group: "Clients", items: [
+      { to: "/agent/leads",           label: "My Leads",         emoji: "🎯" },
+      { to: "/agent/clients",         label: "My Clients",       emoji: "👥" },
+      { to: "/agent/applications",    label: "Applications",     emoji: "📋" },
+    ]},
+    { group: "Finance", items: [
+      { to: "/agent/contracts",       label: "Contracts",        emoji: "📄" },
+      { to: "/agent/payments",        label: "Payments",         emoji: "💳" },
+      { to: "/agent/maintenance",     label: "Maintenance",      emoji: "🔧" },
+    ]},
+    { group: "Tools", items: [
+      { to: "/agent/ai-assistant",    label: "AI Assistant",     emoji: "🤖" },
+      { to: "/agent/notifications",   label: "Notifications",    emoji: "🔔" },
+    ]},
   ],
- 
   client: [
-    {
-      group: "Explore",
-      items: [
-        { to: "/client/dashboard", label: "Home", icon: "grid" },
-        { to: "/client/browseproperties", label: "Browse Properties", icon: "search" },
-        { to: "/client/savedproperties", label: "Saved Properties", icon: "heart" },
-      ],
-    },
-    {
-      group: "My Activity",
-      items: [
-        { to: "/client/myapplications", label: "My Applications", icon: "clipboard" },
-        { to: "/client/mycontracts", label: "My Contracts", icon: "file" },
-        { to: "/client/mypayments", label: "My Payments", icon: "credit-card" },
-
-      ],
-    },
-    {
-      group: "Support",
-      items: [
-        { to: "/client/maintenance", label: "Maintenance Requests", icon: "tool" },
-        { to: "/client/ai-assistant", label: "AI Assistant", icon: "cpu" },
-        { to: "/client/notifications", label: "Notifications", icon: "bell" },
-      ],
-    },
+    { group: "Explore", items: [
+      { to: "/client/dashboard",        label: "Home",               emoji: "◼" },
+      { to: "/client/browseproperties", label: "Browse Properties",  emoji: "🔍" },
+      { to: "/client/savedproperties",  label: "Saved Properties",   emoji: "❤️" },
+    ]},
+    { group: "My Activity", items: [
+      { to: "/client/myapplications",   label: "My Applications",    emoji: "📋" },
+      { to: "/client/mycontracts",      label: "My Contracts",       emoji: "📄" },
+      { to: "/client/mypayments",       label: "My Payments",        emoji: "💳" },
+    ]},
+    { group: "Support", items: [
+      { to: "/client/maintenance",      label: "Maintenance",        emoji: "🔧" },
+      { to: "/client/ai-assistant",     label: "AI Assistant",       emoji: "🤖" },
+      { to: "/client/notifications",    label: "Notifications",      emoji: "🔔" },
+    ]},
   ],
 };
- 
+
 const ROLE_META = {
-  admin: { label: "Administrator", color: "#6366f1", bg: "#eef2ff" },
-  agent: { label: "Agent", color: "#0ea5e9", bg: "#f0f9ff" },
-  client: { label: "Client", color: "#10b981", bg: "#ecfdf5" },
+  admin:  { label: "Administrator", accent: "#c9b87a", tag: "Admin"  },
+  agent:  { label: "Agent",         accent: "#7eb8a4", tag: "Agent"  },
+  client: { label: "Client",        accent: "#a4c4b0", tag: "Client" },
 };
- 
-function getInitials(fullName) {
-  if (!fullName) return "??";
-  return fullName
-    .trim()
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
+
+function getInitials(name) {
+  if (!name) return "?";
+  return name.trim().split(" ").filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("");
 }
- 
-const Icon = ({ name, size = 16 }) => {
-  const icons = {
-    grid: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-      </svg>
-    ),
-    home: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-    ),
-    tag: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
-      </svg>
-    ),
-    key: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2 10.58 12.42M13 7l3 3M18 2l3 3-6 6-3-3"/>
-      </svg>
-    ),
-    users: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-    ),
-    user: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-      </svg>
-    ),
-    target: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
-      </svg>
-    ),
-    file: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-      </svg>
-    ),
-    "credit-card": (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-      </svg>
-    ),
-    tool: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-      </svg>
-    ),
-    bell: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-      </svg>
-    ),
-    cpu: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/>
-        <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
-        <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
-        <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/>
-        <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
-      </svg>
-    ),
-    settings: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    ),
-    "bar-chart": (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
-      </svg>
-    ),
-    "file-text": (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-      </svg>
-    ),
-    "trending-up": (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
-      </svg>
-    ),
-    clipboard: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-      </svg>
-    ),
-    search: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-    ),
-    heart: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-      </svg>
-    ),
-    "chevron-left": (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
-    ),
-    building: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="16"/>
-        <line x1="15" y1="22" x2="15" y2="16"/><rect x="9" y="16" width="6" height="6"/>
-        <line x1="9" y1="7" x2="9.01" y2="7"/><line x1="15" y1="7" x2="15.01" y2="7"/>
-        <line x1="9" y1="11" x2="9.01" y2="11"/><line x1="15" y1="11" x2="15.01" y2="11"/>
-      </svg>
-    ),
-  };
-  return icons[name] || null;
-};
- 
+
 export default function Sidebar({ role = "admin", collapsed = false }) {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const location = useLocation();
- 
-  // Roli aktiv: prefero atë nga user, përndryshe nga prop
-  const activeRole = user?.role || role;
-  const nav = NAV_CONFIG[activeRole] || NAV_CONFIG.admin;
-  const meta = ROLE_META[activeRole] || ROLE_META.admin;
- 
+  const activeRole  = user?.role || role;
+  const nav         = NAV_CONFIG[activeRole] || NAV_CONFIG.admin;
+  const meta        = ROLE_META[activeRole]  || ROLE_META.admin;
   const displayName = user?.fullName || "—";
-  const initials = getInitials(user?.fullName);
- 
+  const initials    = getInitials(user?.fullName);
+
   return (
-    <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
-      {/* Logo */}
-      <div className="sidebar__brand">
-        <div className="sidebar__logo">
-          <Icon name="building" size={20} />
-        </div>
-        {!collapsed && (
-          <div className="sidebar__brand-text">
-            <span className="sidebar__brand-name">PropManager</span>
-            <span className="sidebar__role-badge" style={{ background: meta.bg, color: meta.color }}>
-              {meta.label}
-            </span>
-          </div>
-        )}
-      </div>
- 
-      {/* Nav */}
-      <nav className="sidebar__nav">
-        {nav.map((group) => (
-          <div key={group.group} className="sidebar__group">
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
+
+        .sb {
+          position: fixed;
+          top: 0; left: 0; bottom: 0;
+          width: ${collapsed ? "58px" : "218px"};
+          height: 100vh;
+          background: #1a1714;
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          overflow: hidden;
+          font-family: 'DM Sans', sans-serif;
+          z-index: 100;
+          transition: width 220ms cubic-bezier(0.4,0,0.2,1);
+        }
+        .sb::before {
+          content:'';position:absolute;inset:0;
+          background-image:radial-gradient(rgba(255,255,255,0.02) 1px,transparent 1px);
+          background-size:18px 18px;pointer-events:none;z-index:0;
+        }
+        .sb-top-bar {
+          position:absolute;top:0;left:0;right:0;height:2px;z-index:2;
+          background:linear-gradient(90deg,transparent,#c9b87a 35%,#c9b87a 65%,transparent);
+        }
+        .sb-body { position:relative;z-index:1;display:flex;flex-direction:column;height:100%; }
+
+        .sb-brand {
+          display:flex;align-items:center;gap:10px;
+          padding:${collapsed?"18px 0":"17px 15px"};
+          justify-content:${collapsed?"center":"flex-start"};
+          border-bottom:1px solid rgba(255,255,255,0.055);
+        }
+        .sb-logo-box {
+          width:31px;height:31px;border-radius:8px;flex-shrink:0;
+          background:rgba(201,184,122,0.11);border:1px solid rgba(201,184,122,0.2);
+          display:flex;align-items:center;justify-content:center;font-size:15px;
+        }
+        .sb-brand-name {
+          font-family:'Cormorant Garamond',Georgia,serif;
+          font-size:15.5px;font-weight:700;color:#f5f0e8;letter-spacing:-0.2px;line-height:1.1;white-space:nowrap;
+        }
+        .sb-role-tag {
+          font-size:8.5px;font-weight:600;letter-spacing:0.9px;text-transform:uppercase;line-height:1;
+        }
+
+        .sb-nav { flex:1;overflow-y:auto;overflow-x:hidden;padding:5px 0 10px;scrollbar-width:none; }
+        .sb-nav::-webkit-scrollbar { display:none; }
+
+        .sb-group { padding:0 7px;margin-bottom:0; }
+        .sb-group-label {
+          display:block;font-size:8px;font-weight:600;letter-spacing:1.4px;
+          text-transform:uppercase;color:rgba(255,255,255,0.16);
+          padding:12px 8px 4px;white-space:nowrap;
+        }
+
+        .sb-link {
+          display:flex;align-items:center;gap:8px;
+          padding:6.5px 8px;border-radius:7px;
+          text-decoration:none;color:rgba(255,255,255,0.38);
+          font-size:12px;font-weight:400;
+          transition:all 0.14s ease;position:relative;
+          white-space:nowrap;overflow:hidden;margin-bottom:1px;
+          justify-content:${collapsed?"center":"flex-start"};
+        }
+        .sb-link:hover { color:rgba(255,255,255,0.72);background:rgba(255,255,255,0.05); }
+        .sb-link:hover .sb-em { opacity:0.85; }
+        .sb-link.active {
+          color:#f5f0e8 !important;background:rgba(201,184,122,0.1) !important;font-weight:500;
+        }
+        .sb-link.active .sb-em { opacity:1; }
+        .sb-link.active::before {
+          content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+          width:2px;height:52%;background:#c9b87a;border-radius:0 2px 2px 0;
+        }
+
+        .sb-em { font-size:12px;line-height:1;opacity:0.45;flex-shrink:0;width:15px;text-align:center;transition:opacity 0.14s; }
+        .sb-lbl { flex:1;overflow:hidden;text-overflow:ellipsis; }
+
+        .sb-footer {
+          padding:10px 11px;border-top:1px solid rgba(255,255,255,0.055);
+          display:flex;align-items:center;gap:8px;
+        }
+        .sb-avatar {
+          width:29px;height:29px;border-radius:7px;flex-shrink:0;
+          background:rgba(201,184,122,0.1);border:1px solid rgba(201,184,122,0.17);
+          display:flex;align-items:center;justify-content:center;
+          font-size:10px;font-weight:600;color:#c9b87a;letter-spacing:0.2px;
+        }
+        .sb-uname { display:block;font-size:11.5px;font-weight:500;color:#f5f0e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:112px;line-height:1.2; }
+        .sb-urole { display:block;font-size:9px;color:#5a5438;letter-spacing:0.2px; }
+        .sb-logout { margin-left:auto;background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.18);font-size:12px;padding:5px;border-radius:6px;transition:all 0.14s;flex-shrink:0; }
+        .sb-logout:hover { color:#f5f0e8;background:rgba(255,255,255,0.07); }
+      `}</style>
+
+      <aside className="sb">
+        <div className="sb-top-bar"/>
+        <div className="sb-body">
+
+          <div className="sb-brand">
+            <div className="sb-logo-box">🏡</div>
             {!collapsed && (
-              <span className="sidebar__group-label">{group.group}</span>
+              <div>
+                <div className="sb-brand-name">PropManager</div>
+                <div className="sb-role-tag" style={{color:meta.accent,marginTop:3}}>{meta.tag}</div>
+              </div>
             )}
-            {group.items.map((item) => {
-              const active =
-                location.pathname === item.to ||
-                location.pathname.startsWith(item.to + "/");
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={`sidebar__link ${active ? "sidebar__link--active" : ""}`}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <span className="sidebar__link-icon">
-                    <Icon name={item.icon} size={16} />
-                  </span>
-                  {!collapsed && (
-                    <span className="sidebar__link-label">{item.label}</span>
-                  )}
-                  {active && !collapsed && <span className="sidebar__link-dot" />}
-                </NavLink>
-              );
-            })}
           </div>
-        ))}
-      </nav>
- 
-      {/* User footer */}
-      {!collapsed && (
-        <div className="sidebar__footer">
-          <div className="sidebar__avatar" style={{ background: meta.bg, color: meta.color }}>
-            {initials}
-          </div>
-          <div className="sidebar__user-info">
-            <span className="sidebar__user-name">{displayName}</span>
-            <span className="sidebar__user-role">{meta.label}</span>
-          </div>
+
+          <nav className="sb-nav">
+            {nav.map(group => (
+              <div key={group.group} className="sb-group">
+                {!collapsed && <span className="sb-group-label">{group.group}</span>}
+                {group.items.map(item => {
+                  const active = location.pathname===item.to || location.pathname.startsWith(item.to+"/");
+                  return (
+                    <NavLink key={item.to} to={item.to} title={collapsed?item.label:undefined}
+                      className={`sb-link${active?" active":""}`}>
+                      <span className="sb-em">{item.emoji}</span>
+                      {!collapsed && <span className="sb-lbl">{item.label}</span>}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
+
+          {!collapsed && (
+            <div className="sb-footer">
+              <div className="sb-avatar">{initials}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <span className="sb-uname">{displayName}</span>
+                <span className="sb-urole">{meta.label}</span>
+              </div>
+              {logout && <button className="sb-logout" onClick={logout} title="Sign out">🚪</button>}
+            </div>
+          )}
+
         </div>
-      )}
-    </aside>
+      </aside>
+    </>
   );
 }
- 
