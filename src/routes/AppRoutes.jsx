@@ -22,7 +22,7 @@ import ClientLeads from "../pages/client/ClientLeads";
 import AdminLeads from "../pages/admin/AdminLeads";
 import AgentRentalApplications from "../pages/agent/RentalApplications";
 import AgentRentals from "../pages/agent/Rentals";
-import AgentPayments from "../pages/agent/Payments";
+import AgentPayments from "../pages/agent/AgentPayments";
 import AgentContracts from "../pages/agent/Contracts";
 
 import ClientContrats from "../pages/client/MyContracts";
