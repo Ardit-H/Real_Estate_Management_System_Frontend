@@ -19,7 +19,6 @@ const fmtPrice = (v, cur = "EUR", period = "MONTHLY") =>
 const fmtDate  = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
 const fmtMoney = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
 
-// ─── Validim qendror për ListingModal ────────────────────────────────────────
 function validateListingForm(form, notify) {
   if (!form.property_id || isNaN(Number(form.property_id)) || Number(form.property_id) <= 0) {
     notify("Property ID duhet të jetë numër pozitiv", "error"); return false;
@@ -283,8 +282,8 @@ function ListingModal({ initial, onClose, onSuccess, notify }) {
 // ─── Applications Panel ───────────────────────────────────────────────────────
 function ApplicationsPanel({ listing, onClose, notify }) {
   const navigate = useNavigate();
-  const [apps, setApps]         = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [apps, setApps]           = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [reviewing, setReviewing] = useState(null);
 
   useEffect(() => {
@@ -316,9 +315,14 @@ function ApplicationsPanel({ listing, onClose, notify }) {
     }
   };
 
-  const goToCreateContract = (propertyId) => {
+  // ── Kalon të tri ID-të si string te AgentContracts ────────────
+  const goToCreateContract = (app) => {
     navigate("/agent/contracts", {
-      state: { fromPropertyId: String(propertyId) },
+      state: {
+        fromPropertyId: String(listing.property_id),
+        fromListingId:  String(listing.id),
+        fromClientId:   String(app.client_id),
+      },
     });
   };
 
@@ -367,19 +371,25 @@ function ApplicationsPanel({ listing, onClose, notify }) {
                   </p>
                 )}
 
-                {app.status === "APPROVED" && listing.property_id && (
+                {/* Butoni kalon property_id, listing_id dhe client_id */}
+                {app.status === "APPROVED" && (
                   <div style={{
                     background: "#f0f4ff", border: "1px solid #c7d7fe",
                     borderRadius: 8, padding: "10px 14px", marginBottom: 10,
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                   }}>
-                    <span style={{ fontSize: 13, color: "#4338ca" }}>
-                      ✓ Aprovuar — gati për kontratë
-                    </span>
+                    <div>
+                      <span style={{ fontSize: 13, color: "#4338ca", fontWeight: 500 }}>
+                        ✓ Aprovuar — gati për kontratë
+                      </span>
+                      <p style={{ fontSize: 11.5, color: "#6366f1", marginTop: 2 }}>
+                        Client #{app.client_id} · Listing #{listing.id} · Property #{listing.property_id}
+                      </p>
+                    </div>
                     <button
                       className="btn btn--sm"
-                      style={{ background: "#6366f1", color: "white", border: "none" }}
-                      onClick={() => goToCreateContract(listing.property_id)}
+                      style={{ background: "#6366f1", color: "white", border: "none", whiteSpace: "nowrap" }}
+                      onClick={() => goToCreateContract(app)}
                     >
                       📋 Krijo Kontratë →
                     </button>
