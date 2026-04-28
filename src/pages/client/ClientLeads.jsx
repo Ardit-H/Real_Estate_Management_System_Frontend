@@ -19,9 +19,7 @@ const STATUS_STYLE = {
 const TYPE_ICON  = { SELL:"🏷️", BUY:"🏠", RENT:"🔑", RENT_SEEKING:"🔎", VALUATION:"📊" };
 const TYPE_LABEL = {
   SELL:         "Shitje — jap pronën time",
-  BUY:          "Blerje — kërkoj pronë",
   RENT:         "Qira — jap pronën time me qira",
-  RENT_SEEKING: "Qira — kërkoj të marr me qira",
   VALUATION:    "Vlerësim",
 };
 const SOURCE_ICON = { WEBSITE:"🌐", PHONE:"📞", EMAIL:"✉️", REFERRAL:"👥", SOCIAL:"📱" };
@@ -378,6 +376,15 @@ function CreateLeadModal({ onClose, onSuccess, notify }) {
         </div>
 
         {isPropLead && <PropertyFields form={form} setForm={setForm} leadType={form.type}/>}
+          {/* Info banner */}
+          <div style={{ background: isPropLead?(form.type==="SELL"?"#fef9ff":"#f0fdf4"):"#eff6ff",
+            border:`1px solid ${isPropLead?(form.type==="SELL"?"#e9d5ff":"#bbf7d0"):"#bfdbfe"}`,
+            borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12.5,
+            color: isPropLead?(form.type==="SELL"?"#6b21a8":"#166534"):"#1e40af" }}>
+            {form.type==="SELL" && "🏷️ Keni pronë për shitje? Plotëso të dhënat — agjenti do ta regjistrojë dhe listojë në sistem."}
+            {form.type==="RENT" && "🔑 Keni pronë për t'u dhënë me qira? Plotëso të dhënat — agjenti do t'i menaxhojë aplikimet."}
+            {form.type==="VALUATION" && "📊 Doni vlerësim profesional të pronës suaj? Plotëso mesazhin."}
+          </div>
 
         <div style={{ marginTop:16 }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>

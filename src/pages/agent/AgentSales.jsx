@@ -7,8 +7,17 @@ import api from "../../api/axios";
  
 const SALE_STATUSES   = ["ACTIVE", "SOLD", "PENDING", "CANCELLED"];
 const CONTRACT_STATUSES = ["PENDING", "COMPLETED", "CANCELLED"];
-const PAYMENT_TYPES   = ["FULL", "DEPOSIT", "INSTALLMENT", "COMMISSION"];
+const PAYMENT_TYPES   = ["FULL", "DEPOSIT", "INSTALLMENT", "COMMISSION","AGENT_COMMISSION", "CLIENT_BONUS"];
 const PAYMENT_METHODS = ["BANK_TRANSFER", "CASH", "CARD", "CHECK"];
+const MANUAL_PAYMENT_TYPES = ["DEPOSIT", "INSTALLMENT"];
+const TYPE_COLORS = {
+  FULL:             { bg: "#eef2ff", color: "#6366f1" },
+  DEPOSIT:          { bg: "#fef9c3", color: "#854d0e" },
+  INSTALLMENT:      { bg: "#f1f5f9", color: "#475569" },
+  COMMISSION:       { bg: "#f0fdf4", color: "#166534" },
+  AGENT_COMMISSION: { bg: "#eff6ff", color: "#1d4ed8" },
+  CLIENT_BONUS:     { bg: "#fdf4ff", color: "#7e22ce" },
+};
  
 // ─── Small helpers ────────────────────────────────────────────────────────────
  
@@ -754,16 +763,41 @@ function ContractStatusModal({ contract, onClose, onSuccess, notify }) {
           <option value="CANCELLED">CANCELLED</option>
         </select>
       </Field>
-      <div style={{
-        background: status === "CANCELLED" ? "#fef2f2" : "#ecfdf5",
-        border: `1px solid ${status === "CANCELLED" ? "#fecaca" : "#a7f3d0"}`,
-        borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 13,
-        color: status === "CANCELLED" ? "#b91c1c" : "#047857",
-      }}>
-        {status === "CANCELLED"
-          ? "⚠️ Anulimi i kontratës është i pakthyeshëm."
-          : "✓ Kontrata do të shënohet si e përfunduar me sukses."}
-      </div>
+      {status === "COMPLETED" && (
+  <div style={{
+    background: "#eff6ff", border: "1px solid #bfdbfe",
+    borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+    fontSize: 13, color: "#1e40af",
+  }}>
+    💡 Duke shënuar COMPLETED, sistemi do të krijojë automatikisht
+    pagesat e komisionit (3% e çmimit të shitjes).
+    <br />
+    <span style={{ fontSize: 12, opacity: 0.8 }}>
+      Nëse prona vjen nga një lead klienti, do të krijohet edhe pagesa
+      FULL (97%) për pronarin.
+    </span>
+  </div>
+)}
+
+      {status === "CANCELLED" && (
+        <div style={{
+          background: "#fef2f2", border: "1px solid #fecaca",
+          borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+          fontSize: 13, color: "#b91c1c",
+        }}>
+          ⚠️ Anulimi i kontratës është i pakthyeshëm.
+        </div>
+      )}
+
+      {status === "COMPLETED" && (
+        <div style={{
+          background: "#ecfdf5", border: "1px solid #a7f3d0",
+          borderRadius: 8, padding: "10px 14px", marginBottom: 18,
+          fontSize: 13, color: "#047857",
+        }}>
+          ✓ Kontrata do të shënohet si e përfunduar me sukses.
+        </div>
+      )}
       <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
         <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
         <button
@@ -782,6 +816,7 @@ function ContractStatusModal({ contract, onClose, onSuccess, notify }) {
  
 function PaymentsSection({ prefill, notify }) {
   const [contractId, setContractId] = useState(prefill?.contractId ?? "");
+  const [contractStatus, setContractStatus] = useState(null);
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -804,12 +839,14 @@ function PaymentsSection({ prefill, notify }) {
     if (!contractId) return;
     setLoading(true);
     try {
-      const [listRes, sumRes] = await Promise.all([
+      const [listRes, sumRes, contractRes] = await Promise.all([
         api.get(`/api/sales/payments/contract/${contractId}`),
         api.get(`/api/sales/payments/contract/${contractId}/summary`),
+        api.get(`/api/sales/contracts/${contractId}`),
       ]);
       setPayments(listRes.data || []);
       setSummary(sumRes.data);
+      setContractStatus(contractRes.data?.status ?? null);
     } catch {
       notify("Gabim gjatë ngarkimit të pagesave", "error");
     } finally {
@@ -850,10 +887,20 @@ function PaymentsSection({ prefill, notify }) {
               />
               <button className="btn btn--secondary btn--sm" onClick={fetchPayments}>Load</button>
             </div>
-            {contractId && (
-              <button className="btn btn--primary btn--sm" onClick={() => setCreateOpen(true)}>
+            {contractId && contractStatus !== "COMPLETED" && contractStatus !== "CANCELLED" && (
+              <button className="btn btn--primary btn--sm"
+                onClick={() => setCreateOpen(true)}>
                 + Add Payment
               </button>
+            )}
+            {contractId && contractStatus === "COMPLETED" && (
+              <span style={{
+                fontSize: 12, color: "#059669", fontWeight: 500,
+                background: "#ecfdf5", padding: "4px 12px",
+                borderRadius: 20, border: "1px solid #a7f3d0"
+              }}>
+                ✓ Pagesat u finalizuan automatikisht
+              </span>
             )}
           </div>
         </div>
@@ -865,17 +912,42 @@ function PaymentsSection({ prefill, notify }) {
             background: "#f8fafc", borderBottom: "1px solid #e8edf4",
             alignItems: "center", flexWrap: "wrap",
           }}>
+            {/* Total Payments */}
             <div style={summaryItem}>
               <span style={summaryLabel}>Total Payments</span>
               <span style={summaryVal}>{summary.total_payments}</span>
             </div>
+
             <div style={summaryDivider} />
+
+            {/* Total Paid */}
             <div style={summaryItem}>
               <span style={summaryLabel}>Total Paid</span>
               <span style={{ ...summaryVal, color: "#059669" }}>
                 €{Number(summary.total_paid).toLocaleString("de-DE")}
               </span>
             </div>
+
+            {/* Already Paid */}
+            {payments.some(p => p.payment_type === "DEPOSIT" 
+                 || p.payment_type === "INSTALLMENT") && (
+              <>
+                <div style={summaryDivider} />
+                <div style={summaryItem}>
+                  <span style={summaryLabel}>Kaparro / Këste</span>
+                  <span style={{ ...summaryVal, color: "#854d0e", fontSize: 16 }}>
+                    €{payments
+                        .filter(p => (p.payment_type === "DEPOSIT" 
+                                  || p.payment_type === "INSTALLMENT")
+                                  && p.status === "PAID")
+                        .reduce((s, p) => s + Number(p.amount), 0)
+                        .toLocaleString("de-DE")}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* Progress bar — vetëm kur ka sale price */}
             {paidPct !== null && (
               <>
                 <div style={summaryDivider} />
@@ -895,6 +967,46 @@ function PaymentsSection({ prefill, notify }) {
                 </div>
               </>
             )}
+
+            {/* ← E RE: Breakdown komisioni — shfaqet vetëm kur ekzistojnë */}
+            {payments.some(p => p.payment_type === "AGENT_COMMISSION") && (
+              <>
+                <div style={summaryDivider} />
+                <div style={summaryItem}>
+                  <span style={summaryLabel}>Pronari / Klienti</span>
+                  <span style={{ ...summaryVal, color: "#7e22ce", fontSize: 16 }}>
+                    €{payments
+                        .filter(p => p.payment_type === "FULL")
+                        .reduce((s, p) => s + Number(p.amount), 0)
+                        .toLocaleString("de-DE")}
+                  </span>
+                </div>
+
+                <div style={summaryDivider} />
+
+                <div style={summaryItem}>
+                  <span style={summaryLabel}>Komisioni Agjentit</span>
+                  <span style={{ ...summaryVal, color: "#1d4ed8", fontSize: 16 }}>
+                    €{payments
+                        .filter(p => p.payment_type === "AGENT_COMMISSION")
+                        .reduce((s, p) => s + Number(p.amount), 0)
+                        .toLocaleString("de-DE")}
+                  </span>
+                </div>
+
+                <div style={summaryDivider} />
+
+                <div style={summaryItem}>
+                  <span style={summaryLabel}>Kompania</span>
+                  <span style={{ ...summaryVal, color: "#059669", fontSize: 16 }}>
+                    €{payments
+                        .filter(p => p.payment_type === "COMMISSION")
+                        .reduce((s, p) => s + Number(p.amount), 0)
+                        .toLocaleString("de-DE")}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         )}
  
@@ -910,6 +1022,7 @@ function PaymentsSection({ prefill, notify }) {
                   <th>#</th>
                   <th>Amount</th>
                   <th>Type</th>
+                  <th>Recipient</th>
                   <th>Method</th>
                   <th>Paid Date</th>
                   <th>Ref</th>
@@ -918,36 +1031,57 @@ function PaymentsSection({ prefill, notify }) {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ color: "#94a3b8", fontSize: 12 }}>{p.id}</td>
-                    <td style={{ fontWeight: 600 }}>{fmtPrice(p.amount, p.currency)}</td>
-                    <td>
-                      <span style={{
-                        background: "#f1f5f9", color: "#475569",
-                        padding: "2px 8px", borderRadius: 20, fontSize: 11.5, fontWeight: 500,
-                      }}>
-                        {p.payment_type}
-                      </span>
-                    </td>
-                    <td className="text-muted">{p.payment_method || "—"}</td>
-                    <td className="text-muted">{fmtDate(p.paid_date)}</td>
-                    <td style={{ fontSize: 12, color: "#94a3b8", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {p.transaction_ref || "—"}
-                    </td>
-                    <td><Badge label={p.status} /></td>
-                    <td>
-                      {p.status === "PENDING" && (
-                        <button
-                          className="btn btn--primary btn--sm"
-                          onClick={() => setPayTarget(p)}
-                        >
-                          Mark Paid
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {payments.map((p) => {
+                  const typeStyle = TYPE_COLORS[p.payment_type] || TYPE_COLORS.FULL;
+                  return (
+                    <tr key={p.id}>
+                      <td style={{ color: "#94a3b8", fontSize: 12 }}>{p.id}</td>
+                      <td style={{ fontWeight: 600 }}>{fmtPrice(p.amount, p.currency)}</td>
+                      <td>
+                        <span style={{
+                          background: typeStyle.bg, color: typeStyle.color,
+                          padding: "2px 8px", borderRadius: 20,
+                          fontSize: 11.5, fontWeight: 500,
+                        }}>
+                          {p.payment_type}
+                        </span>
+                      </td>
+
+                                    <td>
+                        {p.recipient_name ? (
+                          <span style={{ fontSize: 13, color: "#475569" }}>
+                            {p.recipient_type === "AGENT"
+                              ? `👤 ${p.recipient_name}`
+                              : p.payment_type === "FULL"
+                                ? `🏠 ${p.recipient_name} (Pronar)`
+                                : `🎁 ${p.recipient_name} (Bonus)`
+                            }
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: 12, color: "#059669", fontWeight: 500,
+                            background: "#ecfdf5", padding: "2px 8px", borderRadius: 20
+                          }}>
+                            🏢 Kompania
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="text-muted">{p.payment_method || "—"}</td>
+                      <td className="text-muted">{fmtDate(p.paid_date)}</td>
+                      <td style={{ fontSize: 12, color: "#94a3b8" }}>{p.transaction_ref || "—"}</td>
+                      <td><Badge label={p.status} /></td>
+                      <td>
+                        {p.status === "PENDING" && (
+                          <button className="btn btn--primary btn--sm"
+                            onClick={() => setPayTarget(p)}>
+                            Mark Paid
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -979,7 +1113,7 @@ function PaymentCreateModal({ contractId, onClose, onSuccess, notify }) {
   const [form, setForm] = useState({
     amount: "",
     currency: "EUR",
-    payment_type: "FULL",
+    payment_type: "DEPOSIT",
     payment_method: "BANK_TRANSFER",
   });
   const [saving, setSaving] = useState(false);
@@ -1006,6 +1140,20 @@ function PaymentCreateModal({ contractId, onClose, onSuccess, notify }) {
  
   return (
     <Modal title={`New Payment — Contract #${contractId}`} onClose={onClose}>
+      <div style={{
+        background: "#f0f4ff", border: "1px solid #c7d7fe",
+        borderRadius: 8, padding: "10px 14px", marginBottom: 16,
+        fontSize: 12.5, color: "#4338ca",
+      }}>
+        💡 Këtu regjistro vetëm pagesa paraprake (kaparro ose këste).
+        <br />
+        <span style={{ opacity: 0.8 }}>
+          Pagesat FULL, COMMISSION dhe AGENT_COMMISSION krijohen
+          automatikisht kur kontrata shënohet COMPLETED.
+          Çdo shumë e dhënë këtu do të zbritet nga pagesa finale.
+        </span>
+      </div>
+      
       <FormRow>
         <Field label="Amount" required>
           <input className="form-input" type="number" value={form.amount}
@@ -1024,7 +1172,7 @@ function PaymentCreateModal({ contractId, onClose, onSuccess, notify }) {
         <Field label="Payment Type">
           <select className="form-select" value={form.payment_type}
             onChange={(e) => set("payment_type", e.target.value)}>
-            {PAYMENT_TYPES.map((t) => <option key={t}>{t}</option>)}
+            {MANUAL_PAYMENT_TYPES.map((t) => <option key={t}>{t}</option>)}
           </select>
         </Field>
         <Field label="Payment Method">
