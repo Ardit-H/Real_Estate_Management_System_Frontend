@@ -45,7 +45,6 @@ function validateContractForm(form, notify) {
   if (new Date(form.end_date) <= new Date(form.start_date)) {
     notify("Data e mbarimit duhet të jetë pas datës së fillimit", "error"); return false;
   }
-  // Kontrata nuk mund të fillojë shumë larg në të shkuarën (max 1 vit)
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
   if (new Date(form.start_date) < oneYearAgo) {
@@ -163,11 +162,11 @@ function Modal({ title, onClose, children, wide = false }) {
 }
 
 // ─── Contract Modal ───────────────────────────────────────────────────────────
-function ContractModal({ initial, initialPropertyId, onClose, onSuccess, notify }) {
+function ContractModal({ initial, initialPropertyId, initialListingId, initialClientId, onClose, onSuccess, notify }) {
   const [form, setForm] = useState({
     property_id:       initial?.property_id       ? String(initial.property_id) : (initialPropertyId || ""),
-    listing_id:        initial?.listing_id        ? String(initial.listing_id)  : "",
-    client_id:         initial?.client_id         ? String(initial.client_id)   : "",
+    listing_id:        initial?.listing_id        ? String(initial.listing_id)  : (initialListingId  || ""),
+    client_id:         initial?.client_id         ? String(initial.client_id)   : (initialClientId   || ""),
     start_date:        initial?.start_date        ?? "",
     end_date:          initial?.end_date          ?? "",
     rent:              initial?.rent              ? String(initial.rent)         : "",
@@ -203,7 +202,6 @@ function ContractModal({ initial, initialPropertyId, onClose, onSuccess, notify 
     }
   };
 
-  // Data minimale për end_date: start_date + 1 ditë
   const minEndDate = form.start_date
     ? new Date(new Date(form.start_date).getTime() + 86400000).toISOString().split("T")[0]
     : undefined;
@@ -211,10 +209,13 @@ function ContractModal({ initial, initialPropertyId, onClose, onSuccess, notify 
   return (
     <Modal title={initial ? `Edit Kontratë #${initial.id}` : "New Lease Contract"}
       onClose={onClose} wide>
-      {initialPropertyId && !initial && (
+      {(initialPropertyId || initialListingId) && !initial && (
         <div style={{ background: "#f0f4ff", border: "1px solid #c7d7fe",
           borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#4338ca" }}>
-          📋 Po krijon kontratë për Property #{initialPropertyId}
+          📋 Po krijon kontratë
+          {initialPropertyId && ` për Property #${initialPropertyId}`}
+          {initialListingId  && ` · Listing #${initialListingId}`}
+          {initialClientId   && ` · Client #${initialClientId}`}
         </div>
       )}
       <Row2>
@@ -238,8 +239,7 @@ function ContractModal({ initial, initialPropertyId, onClose, onSuccess, notify 
         </Field>
         <Field label="Data mbarimit" required hint="Duhet të jetë pas datës fillimit">
           <input className="form-input" type="date" value={form.end_date}
-            onChange={e => set("end_date", e.target.value)}
-            min={minEndDate} />
+            onChange={e => set("end_date", e.target.value)} min={minEndDate} />
         </Field>
       </Row2>
       <Row2>
@@ -261,7 +261,8 @@ function ContractModal({ initial, initialPropertyId, onClose, onSuccess, notify 
         </Field>
         <Field label="URL Kontratë" hint="Duhet të fillojë me http/https">
           <input className="form-input" value={form.contract_file_url}
-            onChange={e => set("contract_file_url", e.target.value)} placeholder="https://..." maxLength={500} />
+            onChange={e => set("contract_file_url", e.target.value)}
+            placeholder="https://..." maxLength={500} />
         </Field>
       </Row2>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 }}>
@@ -274,9 +275,11 @@ function ContractModal({ initial, initialPropertyId, onClose, onSuccess, notify 
   );
 }
 
+// ─── Status Modal — me njoftim komisioni kur ACTIVE ──────────────────────────
 function StatusModal({ contract, onClose, onSuccess, notify }) {
   const [status, setStatus] = useState("ACTIVE");
   const [saving, setSaving] = useState(false);
+
   const handleSubmit = async () => {
     setSaving(true);
     try {
@@ -285,6 +288,12 @@ function StatusModal({ contract, onClose, onSuccess, notify }) {
     } catch (err) { notify(err.response?.data?.message || "Gabim", "error"); }
     finally { setSaving(false); }
   };
+
+  // Llogarit komisionin për preview (3% e qirasë)
+  const commissionTotal = contract.rent
+    ? (Number(contract.rent) * 0.03).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : null;
+
   return (
     <Modal title={`Ndrysho statusin — Kontratë #${contract.id}`} onClose={onClose}>
       <p style={{ fontSize: 13.5, color: "#475569", marginBottom: 16 }}>
@@ -295,12 +304,26 @@ function StatusModal({ contract, onClose, onSuccess, notify }) {
           {LEASE_STATUSES.filter(s => s !== contract.status).map(s => <option key={s}>{s}</option>)}
         </select>
       </Field>
+
+      {/* ── Njoftim komisioni kur ACTIVE — identik me Sales COMPLETED ── */}
+      {status === "ACTIVE" && contract.status === "PENDING_SIGNATURE" && (
+        <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe",
+          borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+          fontSize: 13, color: "#1e40af" }}>
+          💡 Duke shënuar ACTIVE, sistemi do të krijojë automatikisht
+          pagesat e komisionit (3% e qirasë mujore
+          {commissionTotal ? ` = €${commissionTotal}` : ""}).
+        </div>
+      )}
+
       {(status === "CANCELLED" || status === "ENDED") && (
         <div style={{ background: "#fffbeb", border: "1px solid #fde68a",
-          borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#92400e" }}>
+          borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+          fontSize: 13, color: "#92400e" }}>
           ⚠️ Ky veprim nuk mund të kthehet pas konfirmimit.
         </div>
       )}
+
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
         <button className={`btn ${status === "CANCELLED" ? "btn--danger" : "btn--primary"}`}
@@ -387,17 +410,19 @@ export default function AgentContracts() {
   const location   = useLocation();
 
   const fromPropertyId = location.state?.fromPropertyId || null;
+  const fromListingId  = location.state?.fromListingId  || null;
+  const fromClientId   = location.state?.fromClientId   || null;
 
   const [tab, setTab]               = useState("my");
   const [contracts, setContracts]   = useState([]);
   const [loading, setLoading]       = useState(true);
   const [page, setPage]             = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [createOpen, setCreateOpen]   = useState(!!fromPropertyId);
-  const [editTarget, setEditTarget]   = useState(null);
+  const [createOpen, setCreateOpen]     = useState(!!(fromPropertyId || fromListingId));
+  const [editTarget, setEditTarget]     = useState(null);
   const [statusTarget, setStatusTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
-  const [toast, setToast]             = useState(null);
+  const [toast, setToast]               = useState(null);
 
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
@@ -550,10 +575,15 @@ export default function AgentContracts() {
       </div>
 
       {createOpen && (
-        <ContractModal initial={editTarget || null} initialPropertyId={fromPropertyId}
+        <ContractModal
+          initial={editTarget || null}
+          initialPropertyId={fromPropertyId}
+          initialListingId={fromListingId}
+          initialClientId={fromClientId}
           onClose={() => { setCreateOpen(false); setEditTarget(null); }}
           onSuccess={() => handleSuccess(editTarget ? "Kontrata u ndryshua" : "Kontrata u krijua")}
-          notify={notify} />
+          notify={notify}
+        />
       )}
       {editTarget && !createOpen && (
         <ContractModal initial={editTarget} onClose={() => setEditTarget(null)}
