@@ -3,7 +3,7 @@ import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
-const LEAD_TYPES   = ["SELL", "BUY", "RENT", "RENT_SEEKING", "VALUATION"];
+const LEAD_TYPES   = ["SELL", "RENT", "VALUATION"];
 const LEAD_SOURCES = ["WEBSITE", "PHONE", "EMAIL", "REFERRAL", "SOCIAL"];
 const PROPERTY_TYPES = ["APARTMENT", "HOUSE", "VILLA", "COMMERCIAL", "LAND", "OFFICE"];
 const CURRENCIES     = ["EUR", "USD", "ALL", "GBP", "CHF"];
@@ -14,12 +14,10 @@ const STATUS_STYLE = {
   DONE:        { bg: "#ecfdf5", color: "#059669", label: "Done",        icon: "🟢" },
   REJECTED:    { bg: "#fef2f2", color: "#dc2626", label: "Rejected",    icon: "🔴" },
 };
-const TYPE_ICON   = { SELL: "🏷️", BUY: "🏠", RENT: "🔑", RENT_SEEKING: "🔎", VALUATION: "📊" };
+const TYPE_ICON   = { SELL: "🏷️", RENT: "🔑", VALUATION: "📊" };
 const TYPE_LABEL = {
   SELL:         "Shitje — jap pronën time",
-  BUY:          "Blerje — kërkoj pronë",
   RENT:         "Qira — jap pronën time me qira",
-  RENT_SEEKING: "Qira — kërkoj të marr me qira",
   VALUATION:    "Vlerësim",
 };
 const SOURCE_ICON = { WEBSITE: "🌐", PHONE: "📞", EMAIL: "✉️", REFERRAL: "👥", SOCIAL: "📱" };
@@ -224,7 +222,7 @@ function CreateLeadModal({ onClose, onSuccess, notify }) {
   const EMPTY_PD = { title:"", property_type:"APARTMENT", area_sqm:"", bedrooms:"",
     bathrooms:"", price:"", currency:"EUR", city:"", street:"", year_built:"", floor:"", description:"" };
 
-  const [form, setForm] = useState({ type:"BUY", message:"", budget:"", preferred_date:"", source:"WEBSITE", property_data:null });
+  const [form, setForm] = useState({ type:"SELL", message:"", budget:"", preferred_date:"", source:"WEBSITE", property_data:EMPTY_PD });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -262,10 +260,8 @@ function CreateLeadModal({ onClose, onSuccess, notify }) {
   }, [onClose]);
 
   const DATE_LABEL = {
-    SELL:"Data kur dëshironi ta listoni",
-    BUY:"Kur jeni i disponueshëm për vizita", 
+    SELL:"Data kur dëshironi ta listoni", 
     RENT:"Data nga kur prona është e disponueshme",
-    RENT_SEEKING: "Kur dëshironi të lëvizni / move-in date", 
     VALUATION:"Kur dëshironi vlerësimin" 
   
   };
@@ -301,8 +297,6 @@ function CreateLeadModal({ onClose, onSuccess, notify }) {
             color: isPropLead?(form.type==="SELL"?"#6b21a8":"#166534"):"#1e40af" }}>
             {form.type==="SELL" && "🏷️ Keni pronë për shitje? Plotëso të dhënat — agjenti do ta regjistrojë dhe listojë në sistem."}
             {form.type==="RENT" && "🔑 Keni pronë për t'u dhënë me qira? Plotëso të dhënat — agjenti do t'i menaxhojë aplikimet."}
-            {form.type==="RENT_SEEKING" && "🔎 Po kërkoni banesë/pronë me qira? Agjenti do t'ju gjejë opsionet bazuar në preferencat tuaja."}
-            {form.type==="BUY"  && "🏠 Po kërkoni pronë? Agjenti do t'ju gjejë opsionet bazuar në buxhetin tuaj."}
             {form.type==="VALUATION" && "📊 Doni vlerësim profesional të pronës suaj? Plotëso mesazhin."}
           </div>
 
