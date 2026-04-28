@@ -3,18 +3,20 @@ import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const LEAD_TYPES   = ["SELL", "BUY", "RENT", "RENT_SEEKING", "VALUATION"];
 const LEAD_SOURCES = ["WEBSITE", "PHONE", "EMAIL", "REFERRAL", "SOCIAL"];
 const PROPERTY_TYPES = ["APARTMENT", "HOUSE", "VILLA", "COMMERCIAL", "LAND", "OFFICE"];
 const CURRENCIES     = ["EUR", "USD", "ALL", "GBP", "CHF"];
 
+// ─── Styles identical to BrowseProperties palette ────────────────────────────
 const STATUS_STYLE = {
-  NEW:         { bg: "#fffbeb", color: "#c9a84c", border: "#f0d878", label: "New",         icon: "🔵", strip: "#c9a84c" },
-  IN_PROGRESS: { bg: "#edf5f0", color: "#2a6049", border: "#a3c9b0", label: "In Progress", icon: "🟣", strip: "#2a6049" },
-  DONE:        { bg: "#f5f2eb", color: "#5a5f3a", border: "#d9d4c7", label: "Done",        icon: "🟢", strip: "#5a5f3a" },
-  REJECTED:    { bg: "#fff5ee", color: "#8b4513", border: "#f5c6a0", label: "Rejected",    icon: "🔴", strip: "#8b4513" },
+  NEW:         { bg:"#fffbeb", color:"#c9a84c", border:"#f0d878", label:"New",         icon:"🔵", strip:"#c9b87a",  pill:"rgba(201,184,122,0.15)", pillBorder:"rgba(201,184,122,0.3)"  },
+  IN_PROGRESS: { bg:"#edf5f0", color:"#2a6049", border:"#a3c9b0", label:"In Progress", icon:"🟣", strip:"#7eb8a4",  pill:"rgba(126,184,164,0.15)", pillBorder:"rgba(126,184,164,0.3)"  },
+  DONE:        { bg:"#f5f2eb", color:"#5a5f3a", border:"#d9d4c7", label:"Done",        icon:"🟢", strip:"#a4b07e",  pill:"rgba(164,176,126,0.15)", pillBorder:"rgba(164,176,126,0.3)"  },
+  REJECTED:    { bg:"#fff5ee", color:"#8b4513", border:"#f5c6a0", label:"Rejected",    icon:"🔴", strip:"#d4855a",  pill:"rgba(212,133,90,0.15)",  pillBorder:"rgba(212,133,90,0.3)"   },
 };
-const TYPE_ICON  = { SELL: "🏷️", BUY: "🏠", RENT: "🔑", RENT_SEEKING: "🔎", VALUATION: "📊" };
+const TYPE_ICON  = { SELL:"🏷️", BUY:"🏠", RENT:"🔑", RENT_SEEKING:"🔎", VALUATION:"📊" };
 const TYPE_LABEL = {
   SELL:         "Shitje — jap pronën time",
   BUY:          "Blerje — kërkoj pronë",
@@ -22,13 +24,13 @@ const TYPE_LABEL = {
   RENT_SEEKING: "Qira — kërkoj të marr me qira",
   VALUATION:    "Vlerësim",
 };
-const SOURCE_ICON = { WEBSITE: "🌐", PHONE: "📞", EMAIL: "✉️", REFERRAL: "👥", SOCIAL: "📱" };
+const SOURCE_ICON = { WEBSITE:"🌐", PHONE:"📞", EMAIL:"✉️", REFERRAL:"👥", SOCIAL:"📱" };
 
 const fmtDate     = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString("sq-AL", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
 const fmtBudget   = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
 
-// ── Helpers for property_data embedded in message ─────────────────────────────
+// ─── Property data helpers ────────────────────────────────────────────────────
 const PROP_MARKER = "__PROPERTY_DATA__:";
 
 function parsePropertyData(message) {
@@ -70,142 +72,254 @@ function buildMessage(form) {
   return parts.join("\n").trim() || null;
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+// ─── Global CSS — identical system to BrowseProperties ───────────────────────
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  .cl * { box-sizing: border-box; }
+  .cl {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: #f2ede4;
+    min-height: 100vh;
+  }
+
+  .cl-card {
+    transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.25s ease;
+  }
+  .cl-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 24px 52px rgba(20,16,10,0.14) !important;
+  }
+  .cl-btn { transition: all 0.17s ease; }
+  .cl-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  .cl-in:focus {
+    border-color: #8a7d5e !important;
+    box-shadow: 0 0 0 3px rgba(138,125,94,0.13) !important;
+    outline: none;
+  }
+
+  @keyframes cl-fade-up  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes cl-scale-in { from{opacity:0;transform:scale(0.95) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  @keyframes cl-pulse    { 0%,100%{opacity:.38} 50%{opacity:.82} }
+  @keyframes cl-spin     { to{transform:rotate(360deg)} }
+  @keyframes cl-toast    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes cl-card-in  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes cl-shimmer  {
+    0%   { background-position: -800px 0; }
+    100% { background-position: 800px 0; }
+  }
+  @keyframes cl-glow-pulse { 0%,100%{opacity:0.07} 50%{opacity:0.14} }
+`;
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+  useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
   return (
     <div style={{
-      position: "fixed", bottom: 28, right: 28, zIndex: 9999,
-      background: type === "error" ? "#fee2e2" : "#ecfdf5",
-      color: type === "error" ? "#b91c1c" : "#047857",
-      padding: "12px 20px", borderRadius: 10, fontSize: 13.5, fontWeight: 500,
-      boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340,
-    }}>{msg}</div>
+      position:"fixed", bottom:26, right:26, zIndex:9999,
+      background:"#1a1714", color:type==="error"?"#f09090":"#90c8a8",
+      padding:"11px 18px", borderRadius:12, fontSize:13, fontWeight:400,
+      boxShadow:"0 10px 36px rgba(0,0,0,0.32)",
+      border:`1px solid ${type==="error"?"rgba(240,128,128,0.15)":"rgba(144,200,168,0.15)"}`,
+      maxWidth:320, fontFamily:"'DM Sans',sans-serif",
+      animation:"cl-toast 0.2s ease", display:"flex", alignItems:"center", gap:8,
+    }}>
+      <span style={{fontSize:14}}>{type==="error"?"⚠️":"✅"}</span>
+      {msg}
+    </div>
   );
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 function Skeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} style={{ background: "#f0ece3", borderRadius: "14px", height: "120px", animation: "pulse 1.4s ease-in-out infinite" }} />
+        <div key={i} style={{
+          background:"linear-gradient(90deg, #ede9df 25%, #e4ddd0 50%, #ede9df 75%)",
+          backgroundSize:"800px 100%",
+          borderRadius:14, height:130,
+          animation:`cl-shimmer 1.6s ease-in-out infinite, cl-pulse 1.6s ease-in-out infinite`,
+        }}/>
       ))}
     </div>
   );
 }
 
-// ── Field helper ──────────────────────────────────────────────────────────────
+// ─── Shared input styles ──────────────────────────────────────────────────────
+const INP_S = {
+  width:"100%", padding:"10px 13px", border:"1.5px solid #e4ddd0",
+  borderRadius:10, fontSize:13.5, color:"#1a1714",
+  background:"#fff", fontFamily:"'DM Sans',sans-serif",
+  boxSizing:"border-box", outline:"none", transition:"border-color 0.2s",
+};
+const SEL_S = { ...INP_S, cursor:"pointer" };
+const ML = {
+  display:"block", fontSize:10.5, fontWeight:600, color:"#9a8c6e",
+  textTransform:"uppercase", letterSpacing:"0.7px", marginBottom:6,
+  fontFamily:"'DM Sans',sans-serif",
+};
+
 function Field({ label, children, required, hint }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#6b6651", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
-        {label}{required && <span style={{ color: "#c0392b", marginLeft: 2 }}>*</span>}
+    <div style={{ marginBottom:14 }}>
+      <label style={ML}>
+        {label}{required && <span style={{ color:"#c0392b", marginLeft:2 }}>*</span>}
       </label>
       {children}
-      {hint && <p style={{ fontSize: 11.5, color: "#a0997e", marginTop: 4 }}>{hint}</p>}
+      {hint && <p style={{ fontSize:11.5, color:"#b0a890", marginTop:4 }}>{hint}</p>}
     </div>
   );
 }
 
-// ── Input / Select / Textarea shared styles ───────────────────────────────────
-const inputStyle = {
-  width: "100%", padding: "9px 12px", border: "1.5px solid #d9d4c7",
-  borderRadius: "8px", fontSize: "13.5px", color: "#2c2c1e",
-  background: "#fff", outline: "none", fontFamily: "inherit",
-  boxSizing: "border-box", transition: "border-color 0.15s",
-};
-const selectStyle = { ...inputStyle, cursor: "pointer" };
+// ─── Modal wrapper — identical to BrowseProperties ───────────────────────────
+function ModalWrap({ children, onClose, maxW=520 }) {
+  useEffect(() => {
+    const h = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+  return (
+    <div
+      onClick={e => e.target === e.currentTarget && onClose()}
+      style={{
+        position:"fixed", inset:0, zIndex:1000,
+        background:"rgba(8,6,4,0.84)", backdropFilter:"blur(14px)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        padding:20, fontFamily:"'DM Sans',sans-serif",
+      }}>
+      <div style={{
+        width:"100%", maxWidth:maxW, background:"#faf7f2",
+        borderRadius:18, boxShadow:"0 44px 100px rgba(0,0,0,0.55)",
+        maxHeight:"92vh", overflowY:"auto",
+        animation:"cl-scale-in 0.26s ease",
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-// ── Property Fields (SELL/RENT only) ─────────────────────────────────────────
+const MH = ({ title, sub, onClose, icon }) => (
+  <div style={{
+    background:"linear-gradient(135deg, #141210 0%, #1e1a14 45%, #241e16 100%)",
+    padding:"20px 26px", borderRadius:"18px 18px 0 0",
+    display:"flex", alignItems:"center", justifyContent:"space-between",
+    borderBottom:"1px solid rgba(201,184,122,0.15)",
+    position:"relative", overflow:"hidden",
+  }}>
+    <div style={{ position:"absolute", top:0, left:0, right:0, height:"2px", background:"linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)" }}/>
+    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+      {icon && <span style={{ fontSize:22 }}>{icon}</span>}
+      <div>
+        <p style={{ fontFamily:"'Cormorant Garamond',Georgia,serif", fontWeight:700, fontSize:19, margin:"0 0 2px", color:"#f5f0e8", letterSpacing:"-0.2px" }}>{title}</p>
+        {sub && <p style={{ fontSize:12, color:"rgba(245,240,232,0.4)", margin:0, fontFamily:"'DM Sans',sans-serif" }}>{sub}</p>}
+      </div>
+    </div>
+    <button onClick={onClose} style={{
+      background:"rgba(245,240,232,0.08)", backdropFilter:"blur(8px)",
+      border:"1px solid rgba(245,240,232,0.12)", borderRadius:9,
+      width:32, height:32, cursor:"pointer",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      color:"rgba(245,240,232,0.6)", fontSize:16, lineHeight:1,
+    }}>×</button>
+  </div>
+);
+
+// ─── Property Fields ──────────────────────────────────────────────────────────
 function PropertyFields({ form, setForm, leadType }) {
   const set = (k, v) => setForm(p => ({ ...p, property_data: { ...p.property_data, [k]: v } }));
   const pd = form.property_data || {};
-  const isSell  = leadType === "SELL";
-  const accent  = isSell ? "#8b4513" : "#2a6049";
-  const bg      = isSell ? "#fff9f5" : "#f5faf7";
-  const border  = isSell ? "#f5c6a0" : "#a3c9b0";
+  const isSell = leadType === "SELL";
 
   return (
-    <div style={{ marginTop: 8, padding: "18px 16px", background: bg, borderRadius: 12, border: `1px solid ${border}` }}>
-      <p style={{ fontSize: 13, fontWeight: 700, color: accent, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-        {isSell ? "🏷️" : "🔑"} Të dhënat e pronës suaj
-        <span style={{ fontSize: 11.5, fontWeight: 400, color: "#a0997e" }}>(agjenti do t'i regjistrojë në sistem)</span>
+    <div style={{
+      marginTop:8, padding:"18px 16px",
+      background: isSell ? "rgba(201,184,122,0.06)" : "rgba(126,184,164,0.06)",
+      borderRadius:12,
+      border:`1.5px solid ${isSell ? "rgba(201,184,122,0.2)" : "rgba(126,184,164,0.2)"}`,
+    }}>
+      <p style={{ fontSize:12, fontWeight:700, color: isSell ? "#c9b87a" : "#7eb8a4", marginBottom:16, display:"flex", alignItems:"center", gap:6, textTransform:"uppercase", letterSpacing:"0.8px" }}>
+        {isSell ? "🏷️" : "🔑"} Të dhënat e pronës
+        <span style={{ fontSize:11, fontWeight:400, color:"#b0a890", textTransform:"none", letterSpacing:0 }}>(agjenti do t'i regjistrojë)</span>
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <Field label="Titulli i pronës" required>
-          <input style={inputStyle} value={pd.title||""} onChange={e=>set("title",e.target.value)} placeholder="p.sh. Apartament 2+1 në Prishtinë" />
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+        <Field label="Titulli" required>
+          <input className="cl-in" style={INP_S} value={pd.title||""} onChange={e=>set("title",e.target.value)} placeholder="p.sh. Apartament 2+1"/>
         </Field>
-        <Field label="Lloji i pronës" required>
-          <select style={selectStyle} value={pd.property_type||"APARTMENT"} onChange={e=>set("property_type",e.target.value)}>
+        <Field label="Lloji">
+          <select className="cl-in" style={SEL_S} value={pd.property_type||"APARTMENT"} onChange={e=>set("property_type",e.target.value)}>
             {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:12 }}>
         <Field label="Sipërfaqja (m²)">
-          <input style={inputStyle} type="number" min="0" value={pd.area_sqm||""} onChange={e=>set("area_sqm",e.target.value)} placeholder="85" />
+          <input className="cl-in" style={INP_S} type="number" min="0" value={pd.area_sqm||""} onChange={e=>set("area_sqm",e.target.value)} placeholder="85"/>
         </Field>
         <Field label="Dhoma gjumi">
-          <input style={inputStyle} type="number" min="0" value={pd.bedrooms||""} onChange={e=>set("bedrooms",e.target.value)} placeholder="2" />
+          <input className="cl-in" style={INP_S} type="number" min="0" value={pd.bedrooms||""} onChange={e=>set("bedrooms",e.target.value)} placeholder="2"/>
         </Field>
         <Field label="Banjo">
-          <input style={inputStyle} type="number" min="0" value={pd.bathrooms||""} onChange={e=>set("bathrooms",e.target.value)} placeholder="1" />
+          <input className="cl-in" style={INP_S} type="number" min="0" value={pd.bathrooms||""} onChange={e=>set("bathrooms",e.target.value)} placeholder="1"/>
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 12 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12, marginBottom:12 }}>
         <Field label={isSell ? "Çmimi i shitjes" : "Qiraja mujore"}>
-          <input style={inputStyle} type="number" min="0" value={pd.price||""} onChange={e=>set("price",e.target.value)} placeholder="120000" />
+          <input className="cl-in" style={INP_S} type="number" min="0" value={pd.price||""} onChange={e=>set("price",e.target.value)} placeholder="120000"/>
         </Field>
         <Field label="Monedha">
-          <select style={selectStyle} value={pd.currency||"EUR"} onChange={e=>set("currency",e.target.value)}>
+          <select className="cl-in" style={SEL_S} value={pd.currency||"EUR"} onChange={e=>set("currency",e.target.value)}>
             {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
         <Field label="Qyteti" required>
-          <input style={inputStyle} value={pd.city||""} onChange={e=>set("city",e.target.value)} placeholder="Prishtinë" />
+          <input className="cl-in" style={INP_S} value={pd.city||""} onChange={e=>set("city",e.target.value)} placeholder="Tiranë"/>
         </Field>
         <Field label="Rruga / Lagjja">
-          <input style={inputStyle} value={pd.street||""} onChange={e=>set("street",e.target.value)} placeholder="Rr. UÇK, Nr. 15" />
+          <input className="cl-in" style={INP_S} value={pd.street||""} onChange={e=>set("street",e.target.value)} placeholder="Rr. e Durrësit"/>
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <Field label="Viti i ndërtimit">
-          <input style={inputStyle} type="number" min="1900" max={new Date().getFullYear()} value={pd.year_built||""} onChange={e=>set("year_built",e.target.value)} placeholder="2015" />
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+        <Field label="Viti ndërtimit">
+          <input className="cl-in" style={INP_S} type="number" min="1900" max={new Date().getFullYear()} value={pd.year_built||""} onChange={e=>set("year_built",e.target.value)} placeholder="2015"/>
         </Field>
         <Field label="Kati">
-          <input style={inputStyle} type="number" value={pd.floor||""} onChange={e=>set("floor",e.target.value)} placeholder="3" />
+          <input className="cl-in" style={INP_S} type="number" value={pd.floor||""} onChange={e=>set("floor",e.target.value)} placeholder="3"/>
         </Field>
       </div>
 
-      <Field label="Përshkrim i shkurtër" hint="Karakteristika, gjendje, pajisje, etj.">
-        <textarea value={pd.description||""} onChange={e=>set("description",e.target.value)} rows={3}
-          placeholder="Apartament i ri, kuzhinë e pajisur, parking, pa hipotekë..."
-          style={{ ...inputStyle, resize: "vertical" }} />
+      <Field label="Përshkrim" hint="Karakteristika, gjendje, pajisje, etj.">
+        <textarea className="cl-in" value={pd.description||""} onChange={e=>set("description",e.target.value)} rows={3}
+          placeholder="Apartament i ri, kuzhinë e pajisur, parking..."
+          style={{ ...INP_S, resize:"vertical" }}/>
       </Field>
     </div>
   );
 }
 
-// ── Create Lead Modal ─────────────────────────────────────────────────────────
+// ─── Create Lead Modal ────────────────────────────────────────────────────────
 function CreateLeadModal({ onClose, onSuccess, notify }) {
-  const EMPTY_PD = { title:"", property_type:"APARTMENT", area_sqm:"", bedrooms:"",
-    bathrooms:"", price:"", currency:"EUR", city:"", street:"", year_built:"", floor:"", description:"" };
-
+  const EMPTY_PD = { title:"", property_type:"APARTMENT", area_sqm:"", bedrooms:"", bathrooms:"", price:"", currency:"EUR", city:"", street:"", year_built:"", floor:"", description:"" };
   const [form, setForm] = useState({ type:"BUY", message:"", budget:"", preferred_date:"", source:"WEBSITE", property_data:null });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleTypeChange = (t) => {
-    const needsPropertyData = t === "SELL" || t === "RENT";
-    setForm(p => ({ ...p, type: t, property_data: needsPropertyData ? (p.property_data || EMPTY_PD) : null }));
+    const needs = t === "SELL" || t === "RENT";
+    setForm(p => ({ ...p, type: t, property_data: needs ? (p.property_data || EMPTY_PD) : null }));
   };
 
   const handleSubmit = async () => {
@@ -217,12 +331,11 @@ function CreateLeadModal({ onClose, onSuccess, notify }) {
     setSaving(true);
     try {
       await api.post("/api/leads", {
-        type:           form.type,
-        property_id:    null,
-        message:        buildMessage(form),
-        budget:         form.budget ? Number(form.budget) : null,
+        type: form.type, property_id: null,
+        message: buildMessage(form),
+        budget: form.budget ? Number(form.budget) : null,
         preferred_date: form.preferred_date || null,
-        source:         form.source,
+        source: form.source,
       });
       onSuccess();
     } catch (err) {
@@ -230,286 +343,272 @@ function CreateLeadModal({ onClose, onSuccess, notify }) {
     } finally { setSaving(false); }
   };
 
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
-
   const DATE_LABEL = {
-    SELL: "Data kur dëshironi ta listoni",
-    BUY:  "Kur jeni i disponueshëm për vizita",
-    RENT: "Data nga kur prona është e disponueshme",
-    RENT_SEEKING: "Kur dëshironi të lëvizni",
-    VALUATION: "Kur dëshironi vlerësimin",
+    SELL:"Data kur dëshironi ta listoni", BUY:"Kur jeni i disponueshëm për vizita",
+    RENT:"Data nga kur prona është e disponueshme",
+    RENT_SEEKING:"Kur dëshironi të lëvizni", VALUATION:"Kur dëshironi vlerësimin",
   };
   const isPropLead = form.type === "SELL" || form.type === "RENT";
 
-  return (
-    <div
-      onClick={e => e.target === e.currentTarget && onClose()}
-      style={{ position: "fixed", inset: 0, background: "rgba(20,20,10,0.72)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", animation: "fadeInOverlay 0.2s ease" }}
-    >
-      <div style={{ background: "#faf8f3", borderRadius: "18px", width: "100%", maxWidth: isPropLead ? 660 : 520, boxShadow: "0 24px 64px rgba(0,0,0,0.35)", maxHeight: "90vh", overflowY: "auto", animation: "slideUpModal 0.25s ease" }}>
+  const INFO_COLORS = {
+    SELL:         { bg:"rgba(201,184,122,0.08)", border:"rgba(201,184,122,0.2)",  color:"#c9b87a" },
+    RENT:         { bg:"rgba(126,184,164,0.08)", border:"rgba(126,184,164,0.2)",  color:"#7eb8a4" },
+    RENT_SEEKING: { bg:"rgba(164,176,126,0.08)", border:"rgba(164,176,126,0.2)",  color:"#a4b07e" },
+    BUY:          { bg:"rgba(201,184,122,0.08)", border:"rgba(201,184,122,0.2)",  color:"#c9b87a" },
+    VALUATION:    { bg:"rgba(164,176,126,0.08)", border:"rgba(164,176,126,0.2)",  color:"#a4b07e" },
+  };
+  const ic = INFO_COLORS[form.type] || INFO_COLORS.BUY;
 
-        {/* Modal header — same green gradient as hero */}
-        <div style={{ background: "linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)", padding: "20px 26px", borderRadius: "18px 18px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ fontWeight: 800, fontSize: 16, margin: 0, color: "#fff" }}>Kërkesë e re</p>
-            <p style={{ fontSize: 12, color: "#c8ccaa", margin: 0 }}>Plotëso detajet e kërkesës tënde</p>
-          </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer", borderRadius: "50%", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+  return (
+    <ModalWrap onClose={onClose} maxW={isPropLead ? 660 : 520}>
+      <MH title="Kërkesë e re" sub="Plotëso detajet e kërkesës tënde" onClose={onClose} icon="✨"/>
+      <div style={{ padding:"22px 26px" }}>
+        <Field label="Lloji i kërkesës" required>
+          <select className="cl-in" style={SEL_S} value={form.type} onChange={e=>handleTypeChange(e.target.value)}>
+            {LEAD_TYPES.map(t => <option key={t} value={t}>{TYPE_ICON[t]} {TYPE_LABEL[t]||t}</option>)}
+          </select>
+        </Field>
+
+        <div style={{ background:ic.bg, border:`1.5px solid ${ic.border}`, borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:ic.color }}>
+          {form.type==="SELL"         && "🏷️ Keni pronë për shitje? Plotëso të dhënat — agjenti do ta regjistrojë."}
+          {form.type==="RENT"         && "🔑 Keni pronë për t'u dhënë me qira? Agjenti do t'i menaxhojë aplikimet."}
+          {form.type==="RENT_SEEKING" && "🔎 Po kërkoni banesë me qira? Agjenti do t'ju gjejë opsionet."}
+          {form.type==="BUY"          && "🏠 Po kërkoni pronë? Agjenti do t'ju gjejë opsionet bazuar në buxhetin tuaj."}
+          {form.type==="VALUATION"    && "📊 Doni vlerësim profesional? Plotëso mesazhin me detaje."}
         </div>
 
-        <div style={{ padding: "22px 26px" }}>
-          <Field label="Lloji i kërkesës" required>
-            <select style={selectStyle} value={form.type} onChange={e=>handleTypeChange(e.target.value)}>
-              {LEAD_TYPES.map(t => <option key={t} value={t}>{TYPE_ICON[t]} {TYPE_LABEL[t]||t}</option>)}
+        {isPropLead && <PropertyFields form={form} setForm={setForm} leadType={form.type}/>}
+
+        <div style={{ marginTop:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+            <Field label="Buxheti (€)">
+              <input className="cl-in" style={INP_S} type="number" value={form.budget} onChange={e=>set("budget",e.target.value)} placeholder="150000"/>
+            </Field>
+            <Field label={DATE_LABEL[form.type]||"Data e preferuar"}>
+              <input className="cl-in" style={INP_S} type="date" value={form.preferred_date} onChange={e=>set("preferred_date",e.target.value)} min={new Date().toISOString().split("T")[0]}/>
+            </Field>
+          </div>
+          <Field label="Si na gjetet?">
+            <select className="cl-in" style={SEL_S} value={form.source} onChange={e=>set("source",e.target.value)}>
+              {LEAD_SOURCES.map(s => <option key={s} value={s}>{SOURCE_ICON[s]} {s}</option>)}
             </select>
           </Field>
+          <Field label={isPropLead ? "Shënime shtesë" : "Mesazhi"}>
+            <textarea className="cl-in" value={form.message} onChange={e=>set("message",e.target.value)} rows={3}
+              placeholder={isPropLead ? "Informacione shtesë..." : "Përshkruaj nevojën tënde..."}
+              style={{ ...INP_S, resize:"vertical" }}/>
+          </Field>
+        </div>
 
-          {/* Info banner */}
-          <div style={{
-            background: isPropLead ? (form.type==="SELL" ? "#fff9f5" : "#f5faf7") : "#f5f2eb",
-            border: `1px solid ${isPropLead ? (form.type==="SELL" ? "#f5c6a0" : "#a3c9b0") : "#d9d4c7"}`,
-            borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12.5,
-            color: isPropLead ? (form.type==="SELL" ? "#8b4513" : "#2a6049") : "#5a5f3a",
-          }}>
-            {form.type==="SELL"         && "🏷️ Keni pronë për shitje? Plotëso të dhënat — agjenti do ta regjistrojë dhe listojë në sistem."}
-            {form.type==="RENT"         && "🔑 Keni pronë për t'u dhënë me qira? Plotëso të dhënat — agjenti do t'i menaxhojë aplikimet."}
-            {form.type==="RENT_SEEKING" && "🔎 Po kërkoni banesë/pronë me qira? Agjenti do t'ju gjejë opsionet bazuar në preferencat tuaja."}
-            {form.type==="BUY"          && "🏠 Po kërkoni pronë? Agjenti do t'ju gjejë opsionet bazuar në buxhetin tuaj."}
-            {form.type==="VALUATION"    && "📊 Doni vlerësim profesional të pronës suaj? Plotëso mesazhin."}
-          </div>
-
-          {isPropLead && <PropertyFields form={form} setForm={setForm} leadType={form.type} />}
-
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <Field label="Buxheti (€)">
-                <input style={inputStyle} type="number" value={form.budget} onChange={e=>set("budget",e.target.value)} placeholder="150000" />
-              </Field>
-              <Field label={DATE_LABEL[form.type]||"Data e preferuar"}>
-                <input style={inputStyle} type="date" value={form.preferred_date} onChange={e=>set("preferred_date",e.target.value)} min={new Date().toISOString().split("T")[0]} />
-              </Field>
-            </div>
-            <Field label="Si na gjetet?">
-              <select style={selectStyle} value={form.source} onChange={e=>set("source",e.target.value)}>
-                {LEAD_SOURCES.map(s => <option key={s} value={s}>{SOURCE_ICON[s]} {s}</option>)}
-              </select>
-            </Field>
-            <Field label={isPropLead ? "Shënime shtesë (opcionale)" : "Mesazhi"}>
-              <textarea value={form.message} onChange={e=>set("message",e.target.value)} rows={3}
-                placeholder={isPropLead ? "Informacione shtesë..." : "Përshkruaj nevojën tënde..."}
-                style={{ ...inputStyle, resize: "vertical" }} />
-            </Field>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", borderTop: "1px solid #e5e0d4", paddingTop: 18, marginTop: 6 }}>
-            <button onClick={onClose}
-              style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #d9d4c7", background: "#fff", color: "#5a5f3a", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Anulo
-            </button>
-            <button onClick={handleSubmit} disabled={saving}
-              style={{ padding: "9px 22px", borderRadius: 10, border: "none", background: saving ? "#a3a380" : "linear-gradient(135deg,#5a5f3a,#3d4228)", color: "#fff", fontSize: 13.5, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
-              {saving ? "Duke dërguar..." : "Dërgo kërkesën"}
-            </button>
-          </div>
+        <div style={{ display:"flex", gap:9, justifyContent:"flex-end", borderTop:"1px solid #e8e2d6", paddingTop:18, marginTop:6 }}>
+          <button onClick={onClose} className="cl-btn"
+            style={{ padding:"10px 18px", borderRadius:10, border:"1.5px solid #e4ddd0", background:"transparent", color:"#6b6248", fontWeight:500, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+            Anulo
+          </button>
+          <button onClick={handleSubmit} disabled={saving} className="cl-btn"
+            style={{ padding:"10px 22px", borderRadius:10, border:"none", background:saving?"#b0a890":"linear-gradient(135deg,#c9b87a 0%,#b0983e 100%)", color:"#1a1714", fontSize:13, fontWeight:700, cursor:saving?"not-allowed":"pointer", fontFamily:"inherit" }}>
+            {saving ? "Duke dërguar…" : "✓ Dërgo kërkesën"}
+          </button>
         </div>
       </div>
-    </div>
+    </ModalWrap>
   );
 }
 
-// ── Lead Detail Modal ─────────────────────────────────────────────────────────
+// ─── Lead Detail Modal ────────────────────────────────────────────────────────
 function LeadDetailModal({ lead, onClose }) {
   const propertyData = parsePropertyData(lead.message);
   const s = STATUS_STYLE[lead.status] || STATUS_STYLE.NEW;
 
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
-
   return (
-    <div
-      onClick={e => e.target === e.currentTarget && onClose()}
-      style={{ position: "fixed", inset: 0, background: "rgba(20,20,10,0.72)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", animation: "fadeInOverlay 0.2s ease" }}
-    >
-      <div style={{ background: "#faf8f3", borderRadius: "18px", width: "100%", maxWidth: 580, boxShadow: "0 24px 64px rgba(0,0,0,0.35)", maxHeight: "90vh", overflowY: "auto", animation: "slideUpModal 0.25s ease" }}>
+    <ModalWrap onClose={onClose} maxW={580}>
+      <MH
+        title={`${TYPE_LABEL[lead.type]||lead.type}`}
+        sub={`Kërkesë #${lead.id} · ${fmtDateTime(lead.created_at)}`}
+        onClose={onClose}
+        icon={TYPE_ICON[lead.type]||"📋"}
+      />
+      <div style={{ padding:"22px 26px" }}>
 
-        {/* Header */}
-        <div style={{ background: "linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)", padding: "20px 26px", borderRadius: "18px 18px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>{TYPE_ICON[lead.type]||"📋"}</span>
-            <div>
-              <p style={{ fontWeight: 800, fontSize: 15, margin: 0, color: "#fff" }}>
-                Kërkesë #{lead.id} — {TYPE_LABEL[lead.type]||lead.type}
-              </p>
-              <p style={{ fontSize: 12, color: "#c8ccaa", margin: 0 }}>Dërguar: {fmtDateTime(lead.created_at)}</p>
-            </div>
+        {/* Status banner */}
+        <div style={{ marginBottom:20, padding:"14px 16px", background:s.pill, borderRadius:12, border:`1.5px solid ${s.pillBorder}`, display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:`${s.strip}20`, border:`1.5px solid ${s.strip}40`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>
+            {s.icon}
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer", borderRadius: "50%", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:9.5, color:"#b0a890", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", margin:"0 0 5px" }}>Statusi i kërkesës</p>
+            <span style={{ background:`${s.strip}18`, color:s.strip, border:`1.5px solid ${s.strip}40`, padding:"3px 13px", borderRadius:999, fontSize:11, fontWeight:700, letterSpacing:"0.4px", textTransform:"uppercase" }}>{s.label}</span>
+          </div>
+          <p style={{ fontSize:12.5, color:"#6b6651", lineHeight:1.6, maxWidth:240, margin:0, fontFamily:"'Cormorant Garamond',Georgia,serif", fontStyle:"italic" }}>
+            {lead.status==="NEW" && !lead.assigned_agent_id && "Kërkesa juaj u mor. Admini do t'ia asignojë një agjenti."}
+            {lead.status==="NEW" && lead.assigned_agent_id  && "Agjenti është duke shqyrtuar kërkesën tuaj."}
+            {lead.status==="IN_PROGRESS" && "Agjenti po punon. Do të kontaktoheni së shpejti."}
+            {lead.status==="DONE"     && "Kërkesa u përfundua me sukses. Faleminderit!"}
+            {lead.status==="REJECTED" && "Kërkesa nuk mund të plotësohet. Mund të krijoni një të re."}
+          </p>
         </div>
 
-        <div style={{ padding: "22px 26px" }}>
-          {/* Status banner */}
-          <div style={{ marginBottom: 20, padding: "14px 16px", background: s.bg, borderRadius: 10, border: `1px solid ${s.border}`, display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 24 }}>{s.icon}</span>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 11, color: "#a0997e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 4px" }}>Statusi</p>
-              <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, padding: "3px 12px", borderRadius: "20px", fontSize: 12, fontWeight: 700 }}>{s.label}</span>
+        {/* Details grid */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:18 }}>
+          {[
+            { label:"Lloji",          value:`${TYPE_ICON[lead.type]||""} ${TYPE_LABEL[lead.type]||lead.type}` },
+            { label:"Burimi",         value:`${SOURCE_ICON[lead.source]||""} ${lead.source}` },
+            { label:"Buxheti",        value:fmtBudget(lead.budget) },
+            { label:"Data preferuar", value:fmtDate(lead.preferred_date) },
+            { label:"Agjenti",        value:lead.agent_name||(lead.assigned_agent_id?`Agjent #${lead.assigned_agent_id}`:"Pa agjent ende") },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background:"#fff", borderRadius:11, padding:"11px 14px", border:"1.5px solid #e8e2d6" }}>
+              <p style={{ fontSize:9.5, color:"#b0a890", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:5 }}>{label}</p>
+              <p style={{ fontSize:13.5, fontWeight:600, color:"#1a1714", margin:0, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{value}</p>
             </div>
-            <p style={{ fontSize: 12.5, color: "#6b6651", lineHeight: 1.6, maxWidth: 280, margin: 0 }}>
-              {lead.status==="NEW" && !lead.assigned_agent_id && "Kërkesa juaj u mor. Admini do t'ia asignojë një agjenti."}
-              {lead.status==="NEW" && lead.assigned_agent_id  && "Agjenti është duke shqyrtuar kërkesën tuaj."}
-              {lead.status==="IN_PROGRESS" && "Agjenti po punon. Do të kontaktoheni."}
-              {lead.status==="DONE"     && "Kërkesa u përfundua me sukses. Faleminderit!"}
-              {lead.status==="REJECTED" && "Kërkesa nuk mund të plotësohet. Mund të krijoni një të re."}
+          ))}
+        </div>
+
+        {/* Property data */}
+        {propertyData && (
+          <div style={{ background:"rgba(201,184,122,0.06)", border:"1.5px solid rgba(201,184,122,0.18)", borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
+            <p style={{ fontSize:9.5, fontWeight:700, color:"#c9b87a", textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:10 }}>🏠 Të dhënat e pronës</p>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
+              {propertyData.title      && <span style={{ fontSize:13, color:"#4a4438", fontFamily:"'Cormorant Garamond',Georgia,serif" }}>📌 {propertyData.title}</span>}
+              {propertyData.city       && <span style={{ fontSize:13, color:"#4a4438" }}>📍 {propertyData.city}</span>}
+              {propertyData.area_sqm   && <span style={{ fontSize:13, color:"#4a4438" }}>📐 {propertyData.area_sqm} m²</span>}
+              {propertyData.bedrooms   && <span style={{ fontSize:13, color:"#4a4438" }}>🛏 {propertyData.bedrooms} dhoma</span>}
+              {propertyData.price      && <span style={{ fontSize:13, color:"#4a4438" }}>💰 {Number(propertyData.price).toLocaleString("de-DE")} {propertyData.currency}</span>}
+              {propertyData.year_built && <span style={{ fontSize:13, color:"#4a4438" }}>🗓 Ndërtuar: {propertyData.year_built}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Message */}
+        {lead.message && cleanMessage(lead.message) && (
+          <div style={{ background:"#fff", border:"1.5px solid #e8e2d6", borderRadius:12, padding:"14px 16px" }}>
+            <p style={{ fontSize:9.5, color:"#b0a890", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:8 }}>Mesazhi juaj</p>
+            <p style={{ fontSize:14, color:"#3c3830", lineHeight:1.8, fontStyle:"italic", margin:0, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>
+              "{cleanMessage(lead.message)}"
             </p>
           </div>
+        )}
 
-          {/* Details grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
-            {[
-              { label: "Lloji",          value: `${TYPE_ICON[lead.type]||""} ${TYPE_LABEL[lead.type]||lead.type}` },
-              { label: "Burimi",         value: `${SOURCE_ICON[lead.source]||""} ${lead.source}` },
-              { label: "Buxheti",        value: fmtBudget(lead.budget) },
-              { label: "Data preferuar", value: fmtDate(lead.preferred_date) },
-              { label: "Agjenti",        value: lead.agent_name||(lead.assigned_agent_id?`Agjent #${lead.assigned_agent_id}`:"Pa agjent") },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ background: "#fff", borderRadius: 10, padding: "10px 14px", border: "1px solid #e5e0d4" }}>
-                <p style={{ fontSize: 11, color: "#a0997e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</p>
-                <p style={{ fontSize: 13.5, fontWeight: 600, color: "#2c2c1e", margin: 0 }}>{value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Property data */}
-          {propertyData && (
-            <div style={{ background: "#fff9f5", border: "1px solid #f5c6a0", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#8b4513", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>🏠 Të dhënat e pronës tuaj</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {propertyData.title      && <span style={{ fontSize: 13, color: "#4a4a36" }}>📌 {propertyData.title}</span>}
-                {propertyData.city       && <span style={{ fontSize: 13, color: "#4a4a36" }}>📍 {propertyData.city}</span>}
-                {propertyData.area_sqm   && <span style={{ fontSize: 13, color: "#4a4a36" }}>📐 {propertyData.area_sqm} m²</span>}
-                {propertyData.bedrooms   && <span style={{ fontSize: 13, color: "#4a4a36" }}>🛏 {propertyData.bedrooms} dhoma</span>}
-                {propertyData.price      && <span style={{ fontSize: 13, color: "#4a4a36" }}>💰 {Number(propertyData.price).toLocaleString("de-DE")} {propertyData.currency}</span>}
-                {propertyData.year_built && <span style={{ fontSize: 13, color: "#4a4a36" }}>🗓 Ndërtuar: {propertyData.year_built}</span>}
-              </div>
-            </div>
-          )}
-
-          {/* Message */}
-          {lead.message && cleanMessage(lead.message) && (
-            <div style={{ background: "#f5f2eb", border: "1px solid #e5e0d4", borderRadius: 10, padding: "14px 16px" }}>
-              <p style={{ fontSize: 11, color: "#a0997e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Mesazhi juaj</p>
-              <p style={{ fontSize: 13.5, color: "#4a4a36", lineHeight: 1.7, fontStyle: "italic", margin: 0 }}>"{cleanMessage(lead.message)}"</p>
-            </div>
-          )}
-
-          <div style={{ borderTop: "1px solid #e5e0d4", paddingTop: 16, marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={onClose}
-              style={{ padding: "9px 22px", borderRadius: 10, border: "1.5px solid #d9d4c7", background: "#fff", color: "#5a5f3a", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              Mbyll
-            </button>
-          </div>
+        <div style={{ borderTop:"1px solid #e8e2d6", paddingTop:16, marginTop:20, display:"flex", justifyContent:"flex-end" }}>
+          <button onClick={onClose} className="cl-btn"
+            style={{ padding:"10px 22px", borderRadius:10, border:"1.5px solid #e4ddd0", background:"transparent", color:"#6b6248", fontSize:13.5, fontWeight:500, cursor:"pointer", fontFamily:"inherit" }}>
+            Mbyll
+          </button>
         </div>
       </div>
-    </div>
+    </ModalWrap>
   );
 }
 
-// ── Lead Card ─────────────────────────────────────────────────────────────────
-function LeadCard({ lead, onClick }) {
+// ─── Lead Card — rich, matching BrowseProperties card energy ─────────────────
+function LeadCard({ lead, onClick, idx }) {
   const pd = parsePropertyData(lead.message);
   const s  = STATUS_STYLE[lead.status] || STATUS_STYLE.NEW;
 
   return (
-    <div
-      onClick={onClick}
-      style={{ background: "#fff", borderRadius: "14px", overflow: "hidden", boxShadow: "0 2px 12px rgba(90,95,58,0.10)", border: "1px solid #ede9df", cursor: "pointer", transition: "transform 0.18s, box-shadow 0.18s" }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(90,95,58,0.18)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(90,95,58,0.10)"; }}
-    >
-      {/* status strip */}
-      <div style={{ height: "4px", background: s.strip }} />
+    <div className="cl-card" onClick={onClick}
+      style={{
+        background:"#fff", borderRadius:14, overflow:"hidden",
+        boxShadow:"0 2px 16px rgba(20,16,10,0.08)", border:"1.5px solid #ece6da",
+        cursor:"pointer", display:"flex",
+        animation:`cl-card-in 0.38s ease ${Math.min(idx*0.06,0.4)}s both`,
+      }}>
 
-      <div style={{ padding: "16px 20px" }}>
-        {/* Top row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 24 }}>{TYPE_ICON[lead.type]||"📋"}</span>
-            <div>
-              <p style={{ fontWeight: 700, fontSize: "14.5px", margin: 0, color: "#2c2c1e" }}>
+      {/* Left color strip */}
+      <div style={{ width:4, background:`linear-gradient(to bottom, ${s.strip}, ${s.strip}88)`, flexShrink:0 }}/>
+
+      {/* Icon column */}
+      <div style={{
+        width:64, flexShrink:0, display:"flex", flexDirection:"column",
+        alignItems:"center", justifyContent:"center", gap:6,
+        padding:"16px 10px",
+        background:`linear-gradient(135deg, ${s.strip}08, transparent)`,
+        borderRight:"1.5px solid #f0ece3",
+      }}>
+        <span style={{ fontSize:26 }}>{TYPE_ICON[lead.type]||"📋"}</span>
+        <span style={{
+          fontSize:9, fontWeight:700, color:s.strip, textTransform:"uppercase",
+          letterSpacing:"0.5px", textAlign:"center", lineHeight:1.3,
+          background:`${s.strip}15`, padding:"3px 6px", borderRadius:6,
+          border:`1px solid ${s.strip}30`,
+        }}>
+          {s.label}
+        </span>
+      </div>
+
+      {/* Main content */}
+      <div style={{ flex:1, padding:"14px 18px", display:"flex", flexDirection:"column", justifyContent:"space-between", minWidth:0 }}>
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, marginBottom:6 }}>
+            <div style={{ minWidth:0 }}>
+              <h3 style={{
+                margin:"0 0 3px", fontSize:15.5, fontWeight:700, color:"#1a1714",
+                fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:"-0.1px",
+                lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+              }}>
                 {TYPE_LABEL[lead.type]||lead.type}
-                {pd?.title && <span style={{ fontWeight: 400, color: "#8a8469", fontSize: 13, marginLeft: 6 }}>— {pd.title}</span>}
-              </p>
-              <p style={{ fontSize: "12px", color: "#a0997e", margin: "2px 0 0" }}>
+                {pd?.title && <span style={{ fontWeight:400, color:"#9a8c6e", fontSize:13.5 }}> — {pd.title}</span>}
+              </h3>
+              <p style={{ fontSize:11.5, color:"#b0a890", margin:0 }}>
                 #{lead.id} · {fmtDate(lead.created_at)}
-                {pd?.city && ` · 📍 ${pd.city}`}
+                {pd?.city && <span> · 📍 {pd.city}</span>}
               </p>
             </div>
+            <div style={{ flexShrink:0, textAlign:"right" }}>
+              {(lead.budget || pd?.price) && (
+                <div style={{ fontSize:17, fontWeight:700, color:"#1a1714", fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:"-0.3px" }}>
+                  {lead.budget ? fmtBudget(lead.budget) : `€${Number(pd.price).toLocaleString("de-DE")}`}
+                </div>
+              )}
+            </div>
           </div>
-          {/* status badge */}
-          <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, padding: "3px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            {s.icon} {s.label}
-          </span>
         </div>
 
-        {/* Details row */}
-        <div style={{ display: "flex", gap: 16, paddingTop: 12, borderTop: "1px solid #f0ece3", flexWrap: "wrap", alignItems: "center" }}>
-          {(lead.budget || pd?.price) && (
-            <span style={{ fontSize: "12.5px", color: "#6b6651", display: "flex", alignItems: "center", gap: 4 }}>
-              💰 {lead.budget ? fmtBudget(lead.budget) : `${Number(pd.price).toLocaleString("de-DE")} ${pd.currency||"EUR"}`}
-            </span>
-          )}
-          {pd?.area_sqm && <span style={{ fontSize: "12.5px", color: "#6b6651" }}>📐 {pd.area_sqm} m²</span>}
-          {lead.preferred_date && <span style={{ fontSize: "12.5px", color: "#6b6651" }}>📅 {fmtDate(lead.preferred_date)}</span>}
-          <span style={{ fontSize: "12.5px", color: "#6b6651" }}>
+        {/* Footer row */}
+        <div style={{ display:"flex", gap:14, paddingTop:10, borderTop:"1px solid #f0ece3", flexWrap:"wrap", alignItems:"center" }}>
+          {pd?.area_sqm && <span style={{ fontSize:12, color:"#9a8c6e" }}>📐 {pd.area_sqm} m²</span>}
+          {lead.preferred_date && <span style={{ fontSize:12, color:"#9a8c6e" }}>📅 {fmtDate(lead.preferred_date)}</span>}
+          <span style={{ fontSize:12, color:"#9a8c6e" }}>
             {lead.agent_name ? `👤 ${lead.agent_name}` : lead.assigned_agent_id ? `👤 Agjent #${lead.assigned_agent_id}` : "⏳ Pa agjent ende"}
           </span>
-          <span style={{ marginLeft: "auto", fontSize: "12px", color: "#5a5f3a", fontWeight: 600 }}>Shiko detajet →</span>
+          <span style={{ marginLeft:"auto", fontSize:11.5, color:"#c9b87a", fontWeight:600, display:"flex", alignItems:"center", gap:3 }}>
+            Shiko detajet →
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Pagination ────────────────────────────────────────────────────────────────
+// ─── Pagination ───────────────────────────────────────────────────────────────
+const PGB = (active, disabled) => ({
+  padding:"7px 13px", borderRadius:9, border:`1.5px solid ${active?"#1a1714":"#e4ddd0"}`,
+  background:active?"#1a1714":"transparent",
+  color:active?"#f5f0e8":disabled?"#d4ccbe":"#6b6248",
+  cursor:disabled?"not-allowed":"pointer", fontSize:13, fontWeight:active?600:400,
+  fontFamily:"'DM Sans',sans-serif", opacity:disabled?0.5:1, transition:"all 0.14s",
+});
+
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
   const pages   = Array.from({ length: totalPages }, (_, i) => i);
   const visible = pages.filter(p => p === 0 || p === totalPages - 1 || Math.abs(p - page) <= 1);
   return (
-    <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginTop: "36px", flexWrap: "wrap" }}>
-      <button disabled={page === 0} onClick={() => onChange(page - 1)} style={S.pageBtn(false, page === 0)}>‹</button>
-      {visible.map((p, i) => {
-        const gap = visible[i-1] != null && p - visible[i-1] > 1;
-        return (
-          <span key={p} style={{ display: "flex", gap: "6px" }}>
-            {gap && <span style={{ padding: "6px 4px", color: "#8a8469" }}>…</span>}
-            <button onClick={() => onChange(p)} style={S.pageBtn(p === page, false)}>{p + 1}</button>
-          </span>
-        );
+    <div style={{ display:"flex", justifyContent:"center", gap:4, marginTop:44, flexWrap:"wrap" }}>
+      <button disabled={page===0} onClick={()=>onChange(page-1)} style={PGB(false,page===0)}>‹</button>
+      {visible.map((p,i)=>{
+        const gap=visible[i-1]!=null&&p-visible[i-1]>1;
+        return <span key={p} style={{ display:"flex", gap:4 }}>
+          {gap&&<span style={{ padding:"7px 4px", color:"#b0a890", fontSize:13 }}>…</span>}
+          <button onClick={()=>onChange(p)} style={PGB(p===page,false)}>{p+1}</button>
+        </span>;
       })}
-      <button disabled={page === totalPages - 1} onClick={() => onChange(page + 1)} style={S.pageBtn(false, page === totalPages - 1)}>›</button>
+      <button disabled={page===totalPages-1} onClick={()=>onChange(page+1)} style={PGB(false,page===totalPages-1)}>›</button>
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ClientLeads() {
   const { user } = useContext(AuthContext);
   const [leads,        setLeads]        = useState([]);
@@ -528,8 +627,8 @@ export default function ClientLeads() {
       const res = await api.get(`/api/leads/my/client?page=${page}&size=10`);
       setLeads(res.data.content || []);
       setTotalPages(res.data.totalPages || 0);
-    } catch { notify("Gabim gjatë ngarkimit", "error"); }
-    finally   { setLoading(false); }
+    } catch { notify("Gabim gjatë ngarkimit","error"); }
+    finally  { setLoading(false); }
   }, [page, notify]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
@@ -543,76 +642,148 @@ export default function ClientLeads() {
 
   return (
     <MainLayout role="client">
-      <div style={{ background: "#f5f2eb", minHeight: "100vh", fontFamily: "'Georgia', serif" }}>
+      <style>{CSS}</style>
+      <div className="cl">
 
-        {/* ── Hero ── */}
-        <div style={{ background: "linear-gradient(135deg, #5a5f3a 0%, #3d4228 100%)", padding: "48px 32px 40px", textAlign: "center" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: "32px", fontWeight: 800, color: "#fff", letterSpacing: "-0.5px" }}>
-            Kërkesat e Mia
-          </h1>
-          <p style={{ margin: "0 0 28px", color: "#c8ccaa", fontSize: "15px" }}>
-            Shiko statusin e kërkesave që ke dërguar
-          </p>
+        {/* ── Hero — identical structure & minHeight to BrowseProperties ── */}
+        <div style={{
+          background:"linear-gradient(160deg, #141210 0%, #1e1a14 45%, #241e16 100%)",
+          minHeight:320,
+          display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          padding:"40px 32px",
+          position:"relative", overflow:"hidden",
+        }}>
+          {/* Dot texture */}
+          <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(255,255,255,0.018) 1px,transparent 1px)", backgroundSize:"22px 22px", pointerEvents:"none" }}/>
+          {/* Glow left */}
+          <div style={{ position:"absolute", top:"-60px", left:"10%", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(201,184,122,0.07) 0%,transparent 70%)", pointerEvents:"none", animation:"cl-glow-pulse 4s ease-in-out infinite" }}/>
+          {/* Glow right */}
+          <div style={{ position:"absolute", bottom:"-40px", right:"10%", width:240, height:240, borderRadius:"50%", background:"radial-gradient(circle,rgba(126,184,164,0.05) 0%,transparent 70%)", pointerEvents:"none", animation:"cl-glow-pulse 4s ease-in-out infinite 2s" }}/>
+          {/* Gold accent line top */}
+          <div style={{ position:"absolute", top:0, left:0, right:0, height:"2px", background:"linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)" }}/>
 
-          {/* CTA button */}
-          <button
-            onClick={() => setCreateOpen(true)}
-            style={{ display: "inline-flex", alignItems: "center", gap: "7px", background: "#a3a380", color: "#1f1f1f", border: "none", borderRadius: "10px", padding: "11px 24px", fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-          >
-            + Kërkesë e re
-          </button>
+          <div style={{ position:"relative", zIndex:1, maxWidth:700, width:"100%", textAlign:"center" }}>
 
-          {/* Stat pills */}
-          {leads.length > 0 && (
-            <div style={{ display: "flex", gap: "10px", maxWidth: "520px", margin: "24px auto 0", justifyContent: "center", flexWrap: "wrap" }}>
-              {[
-                { label: "Gjithsej", value: stats.total,    color: "#c8ccaa" },
-                { label: "Aktive",   value: stats.active,   color: "#c9a84c" },
-                { label: "Kryer",    value: stats.done,     color: "#a3c9b0" },
-                { label: "Refuzuar", value: stats.rejected, color: "#f5c6a0" },
-              ].map(stat => (
-                <div key={stat.label} style={{ background: "rgba(255,255,255,0.13)", backdropFilter: "blur(6px)", borderRadius: "10px", padding: "10px 18px", border: "1px solid rgba(255,255,255,0.18)" }}>
-                  <div style={{ fontSize: "22px", fontWeight: 900, color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-                  <div style={{ fontSize: "11px", color: "#c8ccaa", fontWeight: 600, marginTop: "3px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
-                </div>
-              ))}
+            {/* Tag line */}
+            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(201,184,122,0.1)", border:"1px solid rgba(201,184,122,0.18)", borderRadius:999, padding:"4px 14px", marginBottom:14 }}>
+              <span style={{ width:5, height:5, borderRadius:"50%", background:"#c9b87a", display:"inline-block", boxShadow:"0 0 6px #c9b87a" }}/>
+              <span style={{ fontSize:10.5, fontWeight:600, color:"#c9b87a", letterSpacing:"1.2px", textTransform:"uppercase" }}>Paneli i Kërkesave</span>
             </div>
-          )}
+
+            {/* Headline */}
+            <h1 style={{
+              margin:"0 0 10px",
+              fontFamily:"'Cormorant Garamond',Georgia,serif",
+              fontSize:"clamp(28px,4vw,44px)",
+              fontWeight:700, color:"#f5f0e8",
+              letterSpacing:"-0.7px", lineHeight:1.1,
+            }}>
+              Kërkesat e{" "}
+              <span style={{
+                background:"linear-gradient(90deg,#c9b87a,#e8d9a0,#c9b87a)",
+                backgroundSize:"200% auto",
+                WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text",
+              }}>Mia</span>
+            </h1>
+
+            <p style={{ margin:"0 auto 24px", fontSize:13.5, color:"rgba(245,240,232,0.38)", fontFamily:"'DM Sans',sans-serif", lineHeight:1.6 }}>
+              Shiko statusin e kërkesave që ke dërguar
+            </p>
+
+            {/* CTA */}
+            <button onClick={() => setCreateOpen(true)} className="cl-btn"
+              style={{
+                display:"inline-flex", alignItems:"center", gap:8,
+                background:"linear-gradient(135deg,#c9b87a 0%,#b0983e 100%)",
+                color:"#1a1714", border:"none", borderRadius:11,
+                padding:"12px 26px", fontSize:14, fontWeight:700,
+                cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
+                boxShadow:"0 6px 24px rgba(201,184,122,0.28)",
+              }}>
+              ✦ Kërkesë e re
+            </button>
+
+            {/* Stat pills */}
+            {leads.length > 0 && (
+              <div style={{ display:"flex", gap:10, maxWidth:520, margin:"24px auto 0", justifyContent:"center", flexWrap:"wrap" }}>
+                {[
+                  { label:"Gjithsej", value:stats.total,    dot:"#c9b87a" },
+                  { label:"Aktive",   value:stats.active,   dot:"#e2c97e" },
+                  { label:"Kryer",    value:stats.done,     dot:"#7eb8a4" },
+                  { label:"Refuzuar", value:stats.rejected, dot:"#d4855a" },
+                ].map(stat => (
+                  <div key={stat.label} style={{
+                    background:"rgba(245,240,232,0.06)", backdropFilter:"blur(10px)",
+                    borderRadius:12, padding:"10px 18px",
+                    border:"1px solid rgba(245,240,232,0.1)",
+                    display:"flex", flexDirection:"column", alignItems:"center", gap:3,
+                  }}>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:5 }}>
+                      <span style={{ fontSize:24, fontWeight:700, color:stat.dot, lineHeight:1, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{stat.value}</span>
+                    </div>
+                    <div style={{ fontSize:10, color:"rgba(245,240,232,0.35)", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px" }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
         </div>
 
-        {/* ── Body ── */}
-        <div style={{ padding: "28px 24px", maxWidth: "1400px", margin: "0 auto" }}>
+        {/* ── Toolbar ── */}
+        <div style={{
+          background:"#fff", borderBottom:"1.5px solid #e8e2d6",
+          padding:"0 28px", height:46,
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          gap:12, fontFamily:"'DM Sans',sans-serif",
+          position:"sticky", top:0, zIndex:100,
+          boxShadow:"0 1px 10px rgba(20,16,10,0.05)",
+        }}>
+          <p style={{ margin:0, fontSize:12.5, color:"#9a8c6e" }}>
+            {loading ? "Duke ngarkuar…" : `${leads.length} kërkesë${leads.length!==1?" gjithsej":""}`}
+          </p>
+          <button onClick={() => setCreateOpen(true)} className="cl-btn"
+            style={{
+              padding:"6px 16px", borderRadius:9,
+              background:"linear-gradient(135deg,#c9b87a,#b0983e)",
+              color:"#1a1714", border:"none", fontSize:12, fontWeight:700,
+              cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
+              display:"flex", alignItems:"center", gap:5,
+            }}>
+            + Kërkesë e re
+          </button>
+        </div>
 
-          {/* Toolbar */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
-            <span style={{ color: "#8a8469", fontSize: "13.5px" }}>
-              {loading ? "Duke ngarkuar…" : `${leads.length} kërkesë${leads.length !== 1 ? " gjithsej" : ""}`}
-            </span>
-          </div>
+        {/* ── Content ── */}
+        <div style={{ padding:"20px 24px", maxWidth:1440, margin:"0 auto" }}>
 
-          {/* Content */}
-          {loading && <Skeleton />}
+          {loading && <Skeleton/>}
 
           {!loading && leads.length === 0 && (
-            <div style={{ textAlign: "center", padding: "64px 32px", color: "#8a8469" }}>
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>📬</div>
-              <h3 style={{ color: "#5a5f3a", margin: "0 0 8px" }}>Nuk keni kërkesa ende</h3>
-              <p style={{ margin: "0 0 20px" }}>Klikoni butonin për të dërguar kërkesën tuaj të parë.</p>
-              <button onClick={() => setCreateOpen(true)}
-                style={{ ...S.applyBtn, width: "auto", padding: "11px 28px" }}>
-                + Kërkesë e re
+            <div style={{ textAlign:"center", padding:"80px 32px", color:"#b0a890", fontFamily:"'DM Sans',sans-serif" }}>
+              <div style={{ fontSize:52, marginBottom:16 }}>📬</div>
+              <p style={{ fontSize:20, fontWeight:700, color:"#6b6340", marginBottom:6, fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:"-0.2px" }}>Nuk keni kërkesa ende</p>
+              <p style={{ fontSize:13, marginBottom:24, color:"#b0a890" }}>Dërgoni kërkesën tuaj të parë — agjenti do t'ju kontaktojë.</p>
+              <button onClick={() => setCreateOpen(true)} className="cl-btn"
+                style={{
+                  padding:"11px 28px", background:"linear-gradient(135deg,#c9b87a,#b0983e)",
+                  color:"#1a1714", border:"none", borderRadius:11, fontSize:13.5,
+                  fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                }}>
+                ✦ Kërkesë e re
               </button>
             </div>
           )}
 
           {!loading && leads.length > 0 && (
             <>
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {leads.map(lead => (
-                  <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
+              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                {leads.map((lead, i) => (
+                  <LeadCard key={lead.id} lead={lead} idx={i} onClick={() => setSelectedLead(lead)}/>
                 ))}
               </div>
-              <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+              <Pagination page={page} totalPages={totalPages} onChange={setPage}/>
             </>
           )}
         </div>
@@ -621,37 +792,12 @@ export default function ClientLeads() {
       {createOpen && (
         <CreateLeadModal
           onClose={() => setCreateOpen(false)}
-          onSuccess={() => { setCreateOpen(false); fetchLeads(); notify("Kërkesa u dërgua! Agjenti do t'ju kontaktojë."); }}
+          onSuccess={() => { setCreateOpen(false); fetchLeads(); notify("Kërkesa u dërgua! Agjenti do t'ju kontaktojë. ✓"); }}
           notify={notify}
         />
       )}
-      {selectedLead && <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} />}
-      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
-
-      <style>{`
-        @keyframes pulse         { 0%,100%{opacity:.5} 50%{opacity:.9} }
-        @keyframes fadeInOverlay { from{opacity:0} to{opacity:1} }
-        @keyframes slideUpModal  { from{transform:translateY(24px);opacity:0} to{transform:translateY(0);opacity:1} }
-        @keyframes spin          { to{transform:rotate(360deg)} }
-      `}</style>
+      {selectedLead && <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)}/>}
+      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
     </MainLayout>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-const S = {
-  applyBtn: {
-    background: "#5a5f3a", color: "#fff", border: "none",
-    borderRadius: "10px", fontSize: "14px", fontWeight: 700,
-    cursor: "pointer", fontFamily: "'Georgia', serif",
-  },
-  pageBtn: (active, disabled) => ({
-    padding: "7px 13px", borderRadius: "8px", border: "1.5px solid",
-    borderColor: active ? "#5a5f3a" : "#d9d4c7",
-    background:  active ? "#5a5f3a" : "#fff",
-    color: active ? "#fff" : disabled ? "#c5bfaf" : "#5a5f3a",
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontSize: "13px", fontWeight: active ? 700 : 400,
-    fontFamily: "inherit", transition: "all 0.15s",
-  }),
-};

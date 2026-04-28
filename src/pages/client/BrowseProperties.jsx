@@ -53,8 +53,11 @@ const getBadge = t => BADGE[t] || { label:t||"–", dot:"#9a8c6e", bg:"rgba(20,1
 const getImg   = src => src ? (src.startsWith("http")?src:BASE_URL+src) : null;
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect fill='%23ede9df' width='400' height='300'/%3E%3Cpath d='M160 195 L200 135 L240 195Z' fill='%23d4cfc3'/%3E%3Crect x='180' y='165' width='40' height='30' fill='%23c4bfb0'/%3E%3C/svg%3E";
 
-// type → emoji
 const TYPE_EMOJI = { APARTMENT:"🏢", HOUSE:"🏠", VILLA:"🏡", COMMERCIAL:"🏬", LAND:"🌿", OFFICE:"🏛️" };
+
+// ─── SHARED HERO CONSTANTS — must match ClientLeads.jsx exactly ───────────────
+// minHeight:320 garanton lartësi identike në të dyja faqet pavarësisht sasisë së tekstit
+const HERO_MIN_HEIGHT = 320;
 
 // ─── Global CSS ───────────────────────────────────────────────────────────────
 const CSS = `
@@ -67,25 +70,20 @@ const CSS = `
     min-height: 100vh;
   }
 
-  /* inputs */
   .bp-in:focus { border-color: #8a7d5e !important; box-shadow: 0 0 0 3px rgba(138,125,94,0.13) !important; outline: none; }
 
-  /* cards */
   .bp-card { transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.25s ease; }
   .bp-card:hover { transform: translateY(-6px); box-shadow: 0 28px 60px rgba(20,16,10,0.16) !important; }
   .bp-card:hover .bp-img { transform: scale(1.06); }
   .bp-img { transition: transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94); }
 
-  /* heart */
   .bp-heart { transition: all 0.15s ease; }
   .bp-heart:hover { color: #c0392b !important; transform: scale(1.2) !important; }
 
-  /* buttons */
   .bp-btn { transition: all 0.17s ease; }
   .bp-btn:hover { opacity: 0.85; transform: translateY(-1px); }
   .bp-chip { transition: all 0.14s ease; }
 
-  /* pg */
   .bp-pg:hover:not(:disabled) { background: #ede9df !important; border-color: #8a7d5e !important; }
 
   @keyframes bp-fade-up    { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -242,14 +240,12 @@ function PropertyDetailModal({ propertyId, onClose, onApply, onBuy }) {
           )}
 
           {!loading&&property&&<>
-            {/* Gallery */}
             <div style={{position:"relative",height:370,background:"#1a1714",borderRadius:"18px 18px 0 0",overflow:"hidden"}}>
               <img src={mainImg} alt={property.title} className="bp-img"
                 style={{width:"100%",height:"100%",objectFit:"cover"}}
                 onError={e=>{e.target.src=PLACEHOLDER;}}/>
               <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(8,6,4,0.65) 0%, transparent 50%)"}}/>
 
-              {/* Badges */}
               <div style={{position:"absolute",top:16,left:16,display:"flex",gap:8,flexWrap:"wrap"}}>
                 <span style={{background:badge.bg,backdropFilter:"blur(10px)",color:"#fff",fontSize:10,fontWeight:600,padding:"5px 13px",borderRadius:999,letterSpacing:"0.6px",textTransform:"uppercase",border:`1px solid ${badge.dot}40`,display:"flex",alignItems:"center",gap:5}}>
                   <span style={{width:5,height:5,borderRadius:"50%",background:badge.dot,display:"inline-block",boxShadow:`0 0 6px ${badge.dot}`}}/>
@@ -289,7 +285,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply, onBuy }) {
               </>}
             </div>
 
-            {/* Body */}
             <div style={{padding:"26px 30px 32px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:16,flexWrap:"wrap"}}>
                 <div style={{flex:1}}>
@@ -305,14 +300,12 @@ function PropertyDetailModal({ propertyId, onClose, onApply, onBuy }) {
                 </div>
               </div>
 
-              {/* Status tags */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>
                 {[property.status||"AVAILABLE",typeLbl(property.type),property.currency].filter(Boolean).map((t,i)=>(
                   <span key={i} style={{background:"#f0ece3",color:"#6b5f45",border:"1px solid #e0d8c8",borderRadius:999,padding:"4px 13px",fontSize:10.5,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase"}}>{t}</span>
                 ))}
               </div>
 
-              {/* Stats */}
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(115px,1fr))",gap:8,marginBottom:22}}>
                 {[
                   {icon:<BedIcon/>,label:"Bedrooms",val:property.bedrooms,em:"🛏️"},
@@ -353,7 +346,6 @@ function PropertyDetailModal({ propertyId, onClose, onApply, onBuy }) {
                 <PriceChart history={priceHistory}/>
               </div>
 
-              {/* Contact */}
               <div style={{background:"linear-gradient(135deg, #1a1714 0%, #2a2420 100%)",borderRadius:14,padding:"22px 24px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
                   <span style={{fontSize:20}}>🤝</span>
@@ -698,14 +690,12 @@ function PropertyCard({ property, viewMode, onOpen, onApply, onBuy, onSaveToggle
         animation:`bp-card-in 0.38s ease ${Math.min(idx*0.05,0.4)}s both`,
       }}>
 
-      {/* Image */}
       <div style={{position:"relative",width:isGrid?"100%":"210px",minWidth:isGrid?"auto":"210px",height:isGrid?"175px":"100%",minHeight:isGrid?"175px":"150px",background:"#ede9df",flexShrink:0,overflow:"hidden"}}>
         <img src={img} alt={property.title} className="bp-img"
           style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
           onError={e=>{e.target.src=PLACEHOLDER;}}/>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(8,6,4,0.5) 0%, transparent 52%)"}}/>
 
-        {/* Badge */}
         <span style={{
           position:"absolute",top:10,left:10,
           background:badge.bg,backdropFilter:"blur(10px)",color:"#fff",
@@ -718,26 +708,22 @@ function PropertyCard({ property, viewMode, onOpen, onApply, onBuy, onSaveToggle
           {badge.label}
         </span>
 
-        {/* Featured */}
         {(property.is_featured||property.isFeatured)&&(
           <span style={{position:"absolute",top:10,left:isGrid?"90px":"84px",background:"rgba(201,184,122,0.9)",backdropFilter:"blur(6px)",color:"#1a1714",fontSize:9.5,fontWeight:700,padding:"4px 10px",borderRadius:999,display:"flex",alignItems:"center",gap:3}}>
             ⭐ Featured
           </span>
         )}
 
-        {/* Save */}
         <button className="bp-heart" onClick={e=>{e.stopPropagation();onSaveToggle(property);}}
           style={{position:"absolute",top:8,right:8,background:"rgba(245,240,232,0.92)",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:isSaved?"#c0392b":"#9a8c6e",fontSize:15}}>
           {isSaved?"❤️":"🤍"}
         </button>
 
-        {/* Property type */}
         <span style={{position:"absolute",bottom:9,left:10,color:"rgba(245,240,232,0.75)",fontSize:11.5,fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:4}}>
           {typeEm} {typeLbl(property.type)}
         </span>
       </div>
 
-      {/* Content */}
       <div style={{padding:isGrid?"13px 15px 15px":"13px 18px",flex:1,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
         <div>
           {(property.city||property.country)&&(
@@ -753,14 +739,12 @@ function PropertyCard({ property, viewMode, onOpen, onApply, onBuy, onSaveToggle
           </div>
         </div>
         <div>
-          {/* Stats row */}
           <div style={{display:"flex",gap:12,color:"#9a8c6e",fontSize:11.5,flexWrap:"wrap",paddingTop:10,borderTop:"1px solid #f0ece3",marginBottom:(isRent||isSale)&&property.status==="AVAILABLE"?11:0}}>
             {property.bedrooms!=null&&<span>🛏 {property.bedrooms}</span>}
             {property.bathrooms!=null&&<span>🚿 {property.bathrooms}</span>}
             {(property.area_sqm??property.areaSqm)!=null&&<span>📐 {property.area_sqm??property.areaSqm} m²</span>}
           </div>
 
-          {/* CTAs */}
           {property.status==="AVAILABLE"&&(isRent||isSale)&&(
             <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
               {isRent&&(
@@ -1024,10 +1008,15 @@ export default function BrowseProperties() {
       <style>{CSS}</style>
       <div className="bp">
 
-        {/* ── Hero banner ── */}
+        {/* ── Hero banner — minHeight:320 + flex centering, identike me ClientLeads ── */}
         <div style={{
           background:"linear-gradient(160deg, #141210 0%, #1e1a14 45%, #241e16 100%)",
-          padding:"36px 32px 30px",
+          minHeight: HERO_MIN_HEIGHT,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "40px 32px",
           position:"relative",
           overflow:"hidden",
         }}>
@@ -1046,7 +1035,7 @@ export default function BrowseProperties() {
             📋 My Applications
           </button>
 
-          <div style={{position:"relative",zIndex:1,maxWidth:700,margin:"0 auto",textAlign:"center"}}>
+          <div style={{position:"relative",zIndex:1,maxWidth:700,width:"100%",textAlign:"center"}}>
 
             {/* Headline */}
             <h1 style={{
@@ -1078,7 +1067,7 @@ export default function BrowseProperties() {
               Verified listings across Albania — villas, apartments, offices & more.
             </p>
 
-            {/* Search bar — full width */}
+            {/* Search bar */}
             <div style={{display:"flex",gap:0,marginBottom:16,boxShadow:"0 6px 24px rgba(0,0,0,0.28)",borderRadius:14,overflow:"hidden",border:"1.5px solid rgba(245,240,232,0.09)"}}>
               <div style={{flex:1,display:"flex",alignItems:"center",gap:10,background:"rgba(245,240,232,0.06)",padding:"0 18px",height:50,backdropFilter:"blur(10px)"}}>
                 <span style={{color:"rgba(245,240,232,0.3)",flexShrink:0,display:"flex"}}><SearchIcon/></span>
@@ -1130,12 +1119,10 @@ export default function BrowseProperties() {
             {mode==="search"&&searchQuery&&<span style={{color:"#6b6340"}}> · "<strong>{searchQuery}</strong>"</span>}
           </p>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {/* Saved link */}
             <a href="/client/savedproperties"
               style={{padding:"5px 13px",borderRadius:9,background:"#fff8f5",border:"1.5px solid #f5c6c0",color:"#c0392b",fontSize:12,fontWeight:500,textDecoration:"none",display:"flex",alignItems:"center",gap:5,fontFamily:"'DM Sans',sans-serif",transition:"all 0.14s"}}>
               ❤️ Saved
             </a>
-            {/* View toggle */}
             <div style={{display:"flex",gap:2,background:"#f5f0e8",border:"1.5px solid #e8e2d6",borderRadius:10,padding:"3px"}}>
               {[{m:"grid",I:GridIcon,label:"Grid"},{m:"list",I:ListIcon,label:"List"}].map(({m,I,label})=>(
                 <button key={m} onClick={()=>setViewMode(m)}
