@@ -155,7 +155,7 @@ export default function Login() {
     if (!user) { setError("Invalid email or password"); return; }
     if (user.role === "admin")       navigate("/admin");
     else if (user.role === "agent")  navigate("/agent");
-    else navigate("/client");
+    else navigate("/client/clientdashboard");
   };
 
   const handleKey = (e) => { if (e.key === "Enter") handleLogin(); };

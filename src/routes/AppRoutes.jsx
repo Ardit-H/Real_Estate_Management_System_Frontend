@@ -39,6 +39,7 @@ export default function AppRoutes() {
     <Route path="/register" element={<Register />} />
 
     {/* PUBLIC / CLIENT */}
+    <Route path="/client/clientdashboard" element={<ClientDashboard/>}/>
     <Route path="/client/properties" element={<PropertiesList />} />
     <Route path="/client/browseproperties" element={<ClientPropeties />} />
     <Route path="/client/mycontracts" element={<ClientContrats/>}/>
