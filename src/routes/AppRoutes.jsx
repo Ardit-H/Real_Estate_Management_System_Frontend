@@ -14,6 +14,7 @@ import AdminRentals from "../pages/admin/Rentals";
 import AdminRentalApplications from "../pages/admin/RentalApplications";
 import AdminContracts from "../pages/admin/Contracts";
 import AdminPayments from "../pages/admin/Payments";
+import { AgentNotifications, AdminNotifications, ClientNotifications } from "../pages/shared/Notifications";
 
 import AgentSales from "../pages/agent/AgentSales";
 import AgentProfile from "../pages/agent/AgentProfile";
@@ -79,6 +80,10 @@ export default function AppRoutes() {
     <Route path="/agent/contracts" element={<AgentContracts />} />
     <Route path="/client/leads" element={<ClientLeads />} />
     <Route path="/admin/leads"  element={<AdminLeads />} />
+
+    <Route path="/agent/notifications"  element={<AgentNotifications  />} />
+<Route path="/admin/notifications"  element={<AdminNotifications  />} />
+<Route path="/client/notifications" element={<ClientNotifications />} />
 </Routes>
     );
 }
