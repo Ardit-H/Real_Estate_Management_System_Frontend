@@ -30,6 +30,9 @@ import ClientPayments from "../pages/client/MyPayments";
 import ClientApplications from "../pages/client/MyApplications";
 import SavedProperties from "../pages/client/SavedProperties";
 import ClientProfile from "../pages/client/ClientProfile";
+import ClientMaintenance from "../pages/client/Maintenance";
+import AgentMaintenance from "../pages/agent/Maintenance";
+import AdminMaintenance from "../pages/admin/Maintenance";
 
 export default function AppRoutes() {
     return (
@@ -47,7 +50,7 @@ export default function AppRoutes() {
     <Route path="/client/myapplications" element={<ClientLeads/>}/>
     <Route path="/client/savedproperties" element={<SavedProperties/>}/>
     <Route path="/client/profile" element={<ClientProfile/>}/>
-    
+    <Route path="/client/maintenance" element={<ClientMaintenance/>}/>
     
 
 
@@ -59,6 +62,7 @@ export default function AppRoutes() {
     <Route path="/admin/applications" element={<AdminRentalApplications/>} />
     <Route path="/admin/contracts" element={<AdminContracts/>} />
     <Route path="/admin/payments" element={<AdminPayments/>} />
+    <Route path="/admin/maintenance" element={<AdminMaintenance/>}/>
     
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />
@@ -66,7 +70,7 @@ export default function AppRoutes() {
     {/* PUBLIC / AGENT */}
      <Route path="/agent/properties" element={<AgentProperties />} />
     <Route path="/agent/sales" element={<AgentSales />} />
-
+    <Route path="/agent/maintenance" element={<AgentMaintenance/>}/>
     <Route path="/agent/profile" element={<AgentProfile />} />
     <Route path="/agent/leads" element={<AgentLeads />} />
     <Route path="/agent/rentals" element={<AgentRentals />} />
