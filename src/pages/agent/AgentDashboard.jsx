@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
+import { AiPaymentRiskPanel } from "../shared/AiFeatures";
 
 // ─── Global CSS ───────────────────────────────────────────────────────────────
 const CSS = `
@@ -576,6 +577,9 @@ export default function AgentDashboard() {
               ))}
             </div>
           </div>
+          <div className="ad-section" style={{ marginTop: 20 }}>
+  <AiPaymentRiskPanel clientId={user?.id} />
+</div>
 
         </div>
 

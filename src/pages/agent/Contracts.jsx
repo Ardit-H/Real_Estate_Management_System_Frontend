@@ -3,6 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
+import { AiContractSummaryButton } from "../shared/AiFeatures";
+
+
 
 const LEASE_STATUSES = ["ACTIVE", "ENDED", "CANCELLED", "PENDING_SIGNATURE"];
 const CURRENCIES     = ["EUR", "USD", "ALL"];
@@ -382,6 +385,7 @@ function ContractDetailModal({ contract, onClose, onEdit, onStatusChange, onGoTo
         <span style={{ fontSize: 13, color: "#4338ca", fontWeight: 500 }}>
           💳 Pagesat e kësaj kontrate
         </span>
+
         <button className="btn btn--sm"
           style={{ background: "#6366f1", color: "white", border: "none" }}
           onClick={() => onGoToPayments(String(contract.id))}>
@@ -551,6 +555,7 @@ export default function AgentContracts() {
                           <div style={{ display: "flex", gap: 5 }}>
                             <button className="btn btn--ghost btn--sm"
                               onClick={() => setDetailTarget(c)}>View</button>
+                              <AiContractSummaryButton contract={c} />
                             <button className="btn btn--secondary btn--sm"
                               title="Shiko pagesat"
                               onClick={() => goToPayments(String(c.id))}
