@@ -208,20 +208,18 @@ export function AiChatWidget() {
     setLoading(true);
 
     try {
-      // Dërgo historikun real — pa mesazhin e parë të mirëseardhjes (index 0)
-      // dhe pa mesazhin aktual të userit (i fundit) — backend e merr si "message"
-      const historyToSend = messages.slice(1); // hiq vetëm greeting-un e parë
+      const historyToSend = messages.slice(1); 
 
       const r = await api.post("/api/ai/chat", {
-        message: input,           // mesazhi aktual i userit
-        history: historyToSend,   // historiku i vërtetë pa greeting
+        message: input,          
+        history: historyToSend,  
       });
 
       setMessages([...newHistory, { role:"assistant", content: r.data.message }]);
     } catch {
       setMessages([...newHistory, {
         role:"assistant",
-        content:"Ndodhi një gabim. Ju lutem provoni sërish.",
+        content:"An error occurred. Please try again.",
       }]);
     } finally { setLoading(false); }
   };
