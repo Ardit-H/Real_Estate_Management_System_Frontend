@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useContext } from "react";
 import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
+import { AiChatWidget } from "../shared/AiFeatures";
 
 // ─── Tiny SVG helpers ─────────────────────────────────────────────────────────
 const Ico = (d, w=15, sw=1.8) => (
@@ -1187,6 +1188,7 @@ export default function BrowseProperties() {
         onSuccess={()=>{setBuyTarget(null);notify("Purchase application submitted ✓");}} notify={notify}/>}
       {showMyApps&&<MyApplicationsModal onClose={()=>setShowMyApps(false)} notify={notify}/>}
       {toast&&<Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
+        <AiChatWidget />
     </MainLayout>
   );
 }
