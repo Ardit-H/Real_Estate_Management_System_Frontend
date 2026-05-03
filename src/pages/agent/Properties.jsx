@@ -124,13 +124,14 @@ export default function AgentProperties() {
         />
       </div>
 
-      {/* Modals */}
+      {/* ── CREATE modal — AI është brenda PropertyForm ───── */}
       {modal === "create" && (
         <Modal title="Add New Property" onClose={closeModal} wide>
           <PropertyForm onSubmit={handleCreate} loading={saving} />
         </Modal>
       )}
 
+      {/* ── EDIT modal ────────────────────────────────────── */}
       {modal === "edit" && selected && (
         <Modal title={`Edit: ${selected.title}`} onClose={closeModal} wide>
           <PropertyForm initial={selected} onSubmit={handleEdit} loading={saving} />
@@ -140,6 +141,7 @@ export default function AgentProperties() {
       {modal === "images"  && selected && <ImageManager property={selected} onClose={closeModal} />}
       {modal === "history" && selected && <PriceHistory propertyId={selected.id} onClose={closeModal} />}
 
+      {/* ── STATUS modal ──────────────────────────────────── */}
       {modal === "status" && selected && (
         <Modal title="Change Status" onClose={closeModal}>
           <p style={{ marginBottom:20, color:"var(--text-secondary)", fontSize:13.5 }}>
@@ -159,6 +161,7 @@ export default function AgentProperties() {
         </Modal>
       )}
 
+      {/* ── DELETE modal ──────────────────────────────────── */}
       {modal === "delete" && selected && (
         <Modal title="Delete Property" onClose={closeModal}>
           <div style={{ textAlign:"center", padding:"8px 0" }}>
