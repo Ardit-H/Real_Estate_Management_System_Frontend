@@ -256,7 +256,7 @@ export function AiChatWidget() {
               <div style={{width:32,height:32,borderRadius:"50%",background:`${C.gold}22`,border:`1.5px solid ${C.gold}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
               <div>
                 <p style={{margin:0,fontSize:13,fontWeight:600,color:"#f5f0e8"}}>AI Real Estate Assistant</p>
-                <p style={{margin:0,fontSize:11,color:"rgba(245,240,232,.4)"}}>Powered by Gemini</p>
+                <p style={{margin:0,fontSize:11,color:"rgba(245,240,232,.4)"}}>Powered by Groq • LLaMA 3.1</p>
               </div>
             </div>
 
