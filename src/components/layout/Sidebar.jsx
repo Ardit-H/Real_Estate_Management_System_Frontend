@@ -5,7 +5,7 @@ import { AuthContext } from "../../context/AuthProvider";
 const NAV_CONFIG = {
   admin: [
     { group: "Overview", items: [
-      { to: "/admin/dashboard",       label: "Dashboard",        emoji: "◼" },
+      { to: "/admin",       label: "Dashboard",        emoji: "◼" },
       { to: "/admin/audit-logs",      label: "Audit Logs",       emoji: "📋" },
     ]},
     { group: "Properties", items: [
@@ -26,6 +26,7 @@ const NAV_CONFIG = {
     ]},
     { group: "System", items: [
       { to: "/admin/background-jobs", label: "Background Jobs",  emoji: "⚙️" },
+      { to: "/admin/ai/agents", label: "AI Agent Analysis", emoji: "🤖" },
       { to: "/admin/settings",        label: "Settings",         emoji: "🛠️" },
     ]},
   ],
