@@ -35,6 +35,8 @@ import ClientProfile from "../pages/client/ClientProfile";
 import ClientMaintenance from "../pages/client/Maintenance";
 import AgentMaintenance from "../pages/agent/Maintenance";
 import AdminMaintenance from "../pages/admin/Maintenance";
+import BackgroundJobs from "../pages/admin/BackgroundJobs";
+import AdminAgentAnalysis from "../pages/admin/AdminAgentAnalysis";
 
 export default function AppRoutes() {
     return (
@@ -53,6 +55,7 @@ export default function AppRoutes() {
     <Route path="/client/savedproperties" element={<SavedProperties/>}/>
     <Route path="/client/profile" element={<ClientProfile/>}/>
     <Route path="/client/maintenance" element={<ClientMaintenance/>}/>
+    <Route path="/admin/ai/agents" element={<AdminAgentAnalysis />} />
     
 
 
@@ -66,7 +69,7 @@ export default function AppRoutes() {
     <Route path="/admin/payments" element={<AdminPayments/>} />
     <Route path="/admin/maintenance" element={<AdminMaintenance/>}/>
     <Route path="/admin/profile" element={<AdminProfile/>} />
-    
+    <Route path="/admin/background-jobs" element={<BackgroundJobs />} />
     <Route path="/agent" element={<AgentDashboard />} />
     <Route path="/client" element={<ClientDashboard />} />
 
