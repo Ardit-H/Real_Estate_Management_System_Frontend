@@ -19,7 +19,6 @@ const SOURCE_ICON = { WEBSITE:"🌐", PHONE:"📞", EMAIL:"✉️", REFERRAL:"�
 
 const fmtDate     = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString("sq-AL",{ day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
-const fmtBudget   = (v) => v!=null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
 
 // Parse property_data embedded in lead message
 function parsePropertyData(message) {
@@ -142,6 +141,8 @@ function CompleteModal({ lead, onConfirm, onClose, loading }) {
                   {propertyData.area_sqm    && <span style={{ fontSize:13 }}>📐 {propertyData.area_sqm} m²</span>}
                   {propertyData.bedrooms    && <span style={{ fontSize:13 }}>🛏 {propertyData.bedrooms} dhoma</span>}
                   {propertyData.price       && <span style={{ fontSize:13 }}>💰 {Number(propertyData.price).toLocaleString("de-DE")} {propertyData.currency}</span>}
+                  {propertyData.total_floors && <span style={{ fontSize:13 }}>🏢 {propertyData.total_floors} kate</span>}
+                  {propertyData.price_per_sqm && <span style={{ fontSize:13 }}>📊 €{Number(propertyData.price_per_sqm).toLocaleString("de-DE")}/m²</span>}
                 </div>
               </div>
 
@@ -311,6 +312,8 @@ function LeadDetailModal({ lead, onClose, onStatusChange, onDecline, onCompleteC
                 {propertyData.floor         && <span style={{ fontSize:13 }}>🏢 Kati {propertyData.floor}</span>}
                 {propertyData.year_built    && <span style={{ fontSize:13 }}>🗓 Ndërtuar: {propertyData.year_built}</span>}
                 {propertyData.price         && <span style={{ fontSize:13 }}>💰 {Number(propertyData.price).toLocaleString("de-DE")} {propertyData.currency}</span>}
+                {propertyData.total_floors  && <span style={{ fontSize:13 }}>🏢 {propertyData.total_floors} kate gjithsej</span>}
+                {propertyData.price_per_sqm && <span style={{ fontSize:13 }}>📊 €{Number(propertyData.price_per_sqm).toLocaleString("de-DE")}/m²</span>}
               </div>
               {propertyData.street && <p style={{ fontSize:13, marginTop:8, color:"#475569" }}>📍 {propertyData.street}</p>}
               {propertyData.description && (
@@ -328,7 +331,6 @@ function LeadDetailModal({ lead, onClose, onStatusChange, onDecline, onCompleteC
               { label:"Agjenti",        value:lead.agent_name||(lead.assigned_agent_id?`#${lead.assigned_agent_id}`:"—") },
               { label:"Tipi",           value:`${TYPE_ICON[lead.type]||""} ${lead.type}` },
               { label:"Burimi",         value:`${SOURCE_ICON[lead.source]||""} ${lead.source}` },
-              { label:"Buxheti",        value:fmtBudget(lead.budget) },
               { label:"Data preferuar", value:fmtDate(lead.preferred_date) },
             ].map(({label,value})=>(
               <div key={label} style={{ background:"#f8fafc", borderRadius:8, padding:"10px 14px", border:"1px solid #e8edf4" }}>
@@ -374,7 +376,6 @@ function LeadRow({ lead, onView, onStatusChange, onDecline, onCompleteClick, sta
         </td>
       )}
       <td style={{ fontSize:12.5, color:"#64748b" }}>{SOURCE_ICON[lead.source]} {lead.source}</td>
-      <td style={{ fontWeight:600, fontSize:13 }}>{fmtBudget(lead.budget)}</td>
       <td><StatusBadge status={lead.status} /></td>
       <td style={{ fontSize:12, color:"#94a3b8" }}>{fmtDate(lead.created_at)}</td>
       <td>
@@ -477,16 +478,18 @@ const handleCompleteConfirm = async (lead, shouldCreateProperty, propertyData) =
       const propPayload = {
         agent_id:     user.id,
         title:        propertyData.title,
-        type:         propertyData.property_type || "APARTMENT",
+        type:         propertyData.type || propertyData.property_type || "APARTMENT",
         status:       "AVAILABLE",
-        listing_type: lead.type === "SELL" ? "SALE" : "RENT",
+        listing_type: lead.type === "RENT" ? "RENT" : "SALE",
         description:  propertyData.description || null,
         price:        propertyData.price ? Number(propertyData.price) : null,
+        price_per_sqm: propertyData.price_per_sqm ? Number(propertyData.price_per_sqm) : null,
         currency:     propertyData.currency || "EUR",
         area_sqm:     propertyData.area_sqm ? Number(propertyData.area_sqm) : null,
         bedrooms:     propertyData.bedrooms ? Number(propertyData.bedrooms) : null,
         bathrooms:    propertyData.bathrooms ? Number(propertyData.bathrooms) : null,
         floor:        propertyData.floor ? Number(propertyData.floor) : null,
+        total_floors: propertyData.total_floors ? Number(propertyData.total_floors) : null,
         year_built:   propertyData.year_built ? Number(propertyData.year_built) : null,
         address: propertyData.city ? {
           city:   propertyData.city,
@@ -645,7 +648,7 @@ const handleCompleteConfirm = async (lead, shouldCreateProperty, propertyData) =
                   <tr>
                     <th>#</th><th>Tipi</th><th>Klienti</th><th>Prona</th>
                     {!isMyLeadsTab && <th>Agjenti</th>}
-                    <th>Burimi</th><th>Buxheti</th><th>Statusi</th><th>Krijuar</th><th>Veprime</th>
+                    <th>Burimi</th><th>Statusi</th><th>Krijuar</th><th>Veprime</th>
                   </tr>
                 </thead>
                 <tbody>
