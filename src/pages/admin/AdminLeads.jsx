@@ -21,7 +21,6 @@ const fmtDateTime = (d) => d ? new Date(d).toLocaleString("sq-AL", {
   day: "2-digit", month: "2-digit", year: "numeric",
   hour: "2-digit", minute: "2-digit",
 }) : "—";
-const fmtBudget = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
@@ -169,7 +168,6 @@ function AssignModal({ lead, onClose, onSuccess, notify }) {
         marginBottom: 18, fontSize: 13, color: "#475569" }}>
         <strong>{TYPE_ICON[lead.type]} {lead.type}</strong>
         {lead.client_name && ` · Klienti: ${lead.client_name}`}
-        {lead.budget && ` · ${fmtBudget(lead.budget)}`}
       </div>
       <Field label="Agjenti" required>
         <select className="form-select" value={agentId}
@@ -296,7 +294,6 @@ function LeadDetailModal({ lead, onClose, onAssign, onStatusChange }) {
           { label: "Prona",         value: lead.property_title || (lead.property_id ? `#${lead.property_id}` : "—") },
           { label: "Tipi",          value: `${TYPE_ICON[lead.type] || ""} ${lead.type}` },
           { label: "Burimi",        value: `${SOURCE_ICON[lead.source] || ""} ${lead.source}` },
-          { label: "Buxheti",       value: fmtBudget(lead.budget) },
           { label: "Data preferuar",value: fmtDate(lead.preferred_date) },
           { label: "Krijuar",       value: fmtDateTime(lead.created_at) },
           { label: "Ndryshuar",     value: fmtDateTime(lead.updated_at) },
@@ -520,7 +517,6 @@ export default function AdminLeads() {
                     <th>Klienti</th>
                     <th>Agjenti</th>
                     <th>Prona</th>
-                    <th>Buxheti</th>
                     <th>Burimi</th>
                     <th>Statusi</th>
                     <th>Krijuar</th>
@@ -556,7 +552,6 @@ export default function AdminLeads() {
                       <td style={{ fontSize: 12.5, color: "#475569" }}>
                         {lead.property_title || (lead.property_id ? `#${lead.property_id}` : "—")}
                       </td>
-                      <td style={{ fontWeight: 600, fontSize: 13 }}>{fmtBudget(lead.budget)}</td>
                       <td style={{ fontSize: 12.5, color: "#64748b" }}>
                         {SOURCE_ICON[lead.source]} {lead.source}
                       </td>
