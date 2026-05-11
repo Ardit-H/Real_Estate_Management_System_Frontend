@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import MainLayout from "../../components/layout/Layout";
 import api from "../../api/axios";
+import { AiContractSummaryButton } from "../shared/AiFeatures";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LEASE_STATUSES = ["ACTIVE", "ENDED", "CANCELLED", "PENDING_SIGNATURE"];
@@ -803,7 +804,7 @@ export default function AdminContracts() {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
                 <thead>
                   <tr>
-                    {["#ID","Property","Listing","Client","Agent","Rent","Deposit","Start","End","Status","Created","Actions"]
+                    {["#ID","Property","Listing","Client","Agent","Rent","Deposit","Start","End","Status","Created","AI","Actions"]
                       .map(h => <th key={h} style={TH}>{h}</th>)}
                   </tr>
                 </thead>
@@ -844,6 +845,11 @@ export default function AdminContracts() {
                               </>
                             )}
                           </div>
+                        </td>
+
+                        {/* ── SHTO KËTË KOLONË TË RE ── */}
+                        <td style={TD}>
+                          <AiContractSummaryButton contract={c} />
                         </td>
                       </tr>
                     );
