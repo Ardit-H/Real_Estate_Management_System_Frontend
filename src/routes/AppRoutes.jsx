@@ -26,6 +26,8 @@ import AgentRentalApplications from "../pages/agent/RentalApplications";
 import AgentRentals from "../pages/agent/Rentals";
 import AgentPayments from "../pages/agent/AgentPayments";
 import AgentContracts from "../pages/agent/Contracts";
+import MyPerformance from "../pages/agent/MyPerformance";
+import MyClients from "../pages/agent/MyClients";
 
 import ClientContrats from "../pages/client/MyContracts";
 import ClientPayments from "../pages/client/MyPayments";
@@ -85,6 +87,8 @@ export default function AppRoutes() {
     <Route path="/agent/contracts" element={<AgentContracts />} />
     <Route path="/client/leads" element={<ClientLeads />} />
     <Route path="/admin/leads"  element={<AdminLeads />} />
+    <Route path="/agent/my-stats" element={<MyPerformance />} />
+    <Route path="/agent/clients"  element={<MyClients />} />
 
     <Route path="/agent/notifications"  element={<AgentNotifications  />} />
 <Route path="/admin/notifications"  element={<AdminNotifications  />} />
