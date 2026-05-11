@@ -1,5 +1,7 @@
 import MainLayout from "../../components/layout/Layout";
 import { useDashboardStats } from "../../hooks/usePropertyCache";
+import { AiPaymentRiskPanel } from "../shared/AiFeatures";
+import { useState } from "react";
 
 const statusBadge = {
   "For Sale":  "badge badge--blue",
@@ -17,6 +19,46 @@ const recentProperties = [
   { id: 5, address: "Rr. UÇK 3, Gjakovë",             type: "Land",      status: "For Sale", price: "€95,000",  agent: "Zana B."    },
 ];
 
+function AiPaymentRiskClientSearch() {
+  const [clientId, setClientId] = useState("");
+  const [submitted, setSubmitted] = useState(null);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, maxWidth: 400 }}>
+        <input
+          type="number"
+          min="1"
+          placeholder="Enter client ID..."
+          value={clientId}
+          onChange={e => setClientId(e.target.value)}
+          style={{
+            flex: 1, padding: "9px 13px",
+            border: "1.5px solid #e8edf4", borderRadius: 8,
+            fontSize: 13, outline: "none",
+          }}
+        />
+        <button
+          onClick={() => setSubmitted(clientId ? Number(clientId) : null)}
+          disabled={!clientId}
+          className="btn btn--primary btn--sm"
+          style={{ padding: "9px 18px" }}
+        >
+          Analyze
+        </button>
+        {submitted && (
+          <button
+            onClick={() => { setSubmitted(null); setClientId(""); }}
+            className="btn btn--secondary btn--sm"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {submitted && <AiPaymentRiskPanel clientId={submitted} />}
+    </div>
+  );
+}
 export default function AdminDashboard() {
   const { data: apiStats, isLoading } = useDashboardStats();
 
@@ -187,6 +229,23 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+      {/* AI Payment Risk — Admin Overview */}
+      <div style={{ marginTop: 24 }}>
+        <div className="card">
+          <div className="card__header">
+            <h2 className="card__title">AI Payment Risk Analysis</h2>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>
+              Analyze client payment behavior
+            </span>
+          </div>
+          <div style={{ padding: "16px 20px" }}>
+            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+              Enter a client ID to analyze their payment risk score using AI.
+            </p>
+            <AiPaymentRiskClientSearch />
+          </div>
         </div>
       </div>
     </MainLayout>
