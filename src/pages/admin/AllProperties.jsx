@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useContext } from "react";
 import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
+import Modal         from "../../components/agent/Modal";
+import PropertyForm  from "../../components/agent/PropertyForm";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -85,47 +87,6 @@ function Toast({ msg, type = "success", onDone }) {
       fontSize: 13, fontWeight: 500,
       boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340,
     }}>{msg}</div>
-  );
-}
-
-// Shared modal wrapper — same style as AgentSales.jsx
-function Modal({ title, onClose, children, maxWidth = 520 }) {
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(15,23,42,0.45)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div style={{
-        width: "100%", maxWidth,
-        background: "#ffffff", borderRadius: 16,
-        boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
-        maxHeight: "90vh", overflowY: "auto",
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "18px 24px", borderBottom: "1px solid #e8edf4",
-          position: "sticky", top: 0, background: "#fff", zIndex: 1,
-        }}>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>{title}</span>
-          <button onClick={onClose} style={{
-            width: 30, height: 30, display: "flex", alignItems: "center",
-            justifyContent: "center", border: "none", background: "none",
-            color: "#94a3b8", cursor: "pointer", fontSize: 16, borderRadius: 6,
-          }}>✕</button>
-        </div>
-        <div style={{ padding: "22px 24px" }}>{children}</div>
-      </div>
-    </div>
   );
 }
 
@@ -792,7 +753,8 @@ const TD = {
 
 function AllPropertiesContent() {
   const { user } = useContext(AuthContext);
-
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating,   setCreating]   = useState(false);
   const tenantSchema = (() => {
     try {
       const info = JSON.parse(localStorage.getItem("user_info") || "{}");
@@ -866,7 +828,21 @@ function AllPropertiesContent() {
   //  3. No search, agent filter in panel  →  GET /api/properties/agent/{id}
   //  4. No search, other filters          →  GET /api/properties/filter
   //  5. No search, no filters             →  GET /api/properties  (paginated)
-
+  
+  const handleCreate = async (data) => {
+    setCreating(true);
+    try {
+      await api.post("/api/properties", data);
+      notify("Property created successfully!");
+      setCreateOpen(false);
+      fetchData();
+    } catch (err) {
+      notify(err.response?.data?.message || "Failed to create property", "error");
+    } finally {
+      setCreating(false);
+    }
+  };
+  
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -1107,6 +1083,13 @@ function AllPropertiesContent() {
             Admin view — full control over all properties
           </p>
         </div>
+        <button
+            className="btn btn--primary"
+            onClick={() => setCreateOpen(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <span style={{ fontSize: 16 }}>+</span> Add Property
+          </button>
 
         {/* Toggle buttons */}
         <div style={{ display: "flex", gap: 8 }}>
@@ -1390,6 +1373,12 @@ function AllPropertiesContent() {
 
       {toast && (
         <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />
+      )}
+
+      {createOpen && (
+        <Modal title="Add New Property" onClose={() => setCreateOpen(false)} wide>
+          <PropertyForm onSubmit={handleCreate} loading={creating} />
+        </Modal>
       )}
     </div>
   );
