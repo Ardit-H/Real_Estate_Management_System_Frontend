@@ -43,7 +43,8 @@ const NAV_CONFIG = {
     { group: "Clients", items: [
       { to: "/agent/leads",           label: "My Leads",         emoji: "🎯" },
       { to: "/agent/clients",         label: "My Clients",       emoji: "👥" },
-      { to: "/agent/applications",    label: "Applications",     emoji: "📋" },
+      { to: "/agent/applications",    label: "Rental Applications",     emoji: "📋" },
+      { to: "/agent/sale-applications",    label: "Sale Applications",     emoji: "📋" },
     ]},
     { group: "Finance", items: [
       { to: "/agent/contracts",       label: "Contracts",        emoji: "📄" },
