@@ -1144,6 +1144,7 @@ export default function SalesAdminModule() {
 
   return (
     <MainLayout role="admin">
+       <div style={{ backgroundColor: "#f2ede4", minHeight: "100vh", padding: 24 }}>
       <style>{CSS}</style>
       <div className="as-wrap" style={{ padding: "1.5rem 0" }}>
 
@@ -1198,6 +1199,7 @@ export default function SalesAdminModule() {
         {tab === "payments"  && <PaymentsSection  prefill={paymentPrefill} notify={notify} />}
 
         {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+      </div>
       </div>
     </MainLayout>
   );

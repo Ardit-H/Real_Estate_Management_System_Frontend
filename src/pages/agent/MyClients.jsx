@@ -667,7 +667,6 @@ export default function MyClients() {
                 { icon: "📄", label: "Contracts",      path: "/agent/contracts",    accent: C.gold    },
                 { icon: "💳", label: "Payments",       path: "/agent/payments",     accent: "#a07eb8" },
                 { icon: "📈", label: "My Performance", path: "/agent/my-stats",     accent: "#c9a87a" },
-                { icon: "🤖", label: "AI Assistant",   path: "/agent/ai-assistant", accent: "#9a8c6e" },
               ].map(({ icon, label, path, accent }) => (
                 <button key={path} className="mc-btn" onClick={() => navigate(path)}
                   style={{

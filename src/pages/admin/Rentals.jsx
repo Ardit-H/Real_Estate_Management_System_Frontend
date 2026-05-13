@@ -393,6 +393,7 @@ export default function AdminRentals() {
 
   return (
     <MainLayout role="admin">
+       <div style={{ backgroundColor: "#f2ede4", minHeight: "100vh", padding: 24 }}>
       <style>{CSS}</style>
       <div className="ar-wrap" style={{ padding: "1.5rem 0" }}>
 
@@ -493,6 +494,7 @@ export default function AdminRentals() {
         {detailTarget && <ListingDetailModal listing={detailTarget} onClose={() => setDetail(null)} />}
         {deleteId     && <DeleteModal id={deleteId} label="Listing" onCancel={() => setDeleteId(null)} onConfirm={handleDelete} loading={deleting} />}
         {toast        && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+      </div>
       </div>
     </MainLayout>
   );

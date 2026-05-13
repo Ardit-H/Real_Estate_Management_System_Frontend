@@ -631,7 +631,6 @@ export default function MyPerformance() {
                 { icon: "💳", label: "Payments",        path: "/agent/payments",   accent: "#a07eb8" },
                 { icon: "🏠", label: "My Properties",   path: "/agent/properties", accent: C.gold    },
                 { icon: "🤝", label: "Sales",           path: "/agent/sales",      accent: "#c9a87a" },
-                { icon: "🤖", label: "AI Assistant",    path: "/agent/ai-assistant", accent: "#9a8c6e" },
               ].map(({ icon, label, path, accent }) => (
                 <button key={path} className="mp-btn" onClick={() => navigate(path)}
                   style={{
