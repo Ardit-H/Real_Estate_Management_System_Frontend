@@ -66,7 +66,6 @@ const NAV_CONFIG = {
     ]},
     { group: "Support", items: [
       { to: "/client/maintenance",      label: "Maintenance",        emoji: "🔧" },
-      { to: "/client/ai-assistant",     label: "AI Assistant",       emoji: "🤖" },
       { to: "/client/notifications",    label: "Notifications",      emoji: "🔔" },
     ]},
   ],

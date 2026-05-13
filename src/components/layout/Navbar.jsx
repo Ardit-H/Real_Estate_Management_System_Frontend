@@ -276,6 +276,10 @@ const CSS = `
     width: 6px; height: 6px; border-radius: 50%;
     display: inline-block; margin-right: 5px;
   }
+
+  .nb-impersonate-exit:hover {
+  background: rgba(255,255,255,0.18) !important;
+}
 `;
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
@@ -314,7 +318,7 @@ const fmtRel = (d) => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Navbar({ role = "admin", onToggleSidebar }) {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, impersonating, exitImpersonation } = useContext(AuthContext);
   const [dropdownOpen, setDropdownOpen]   = useState(false);
   const [notifOpen, setNotifOpen]         = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -390,6 +394,46 @@ export default function Navbar({ role = "admin", onToggleSidebar }) {
   return (
     <>
       <style>{CSS}</style>
+       {/* ── IMPERSONATION BANNER ── */}
+      {impersonating && (
+        <div style={{
+          background: "linear-gradient(90deg, #7f1d1d, #991b1b)",
+          borderBottom: "1px solid rgba(248,113,113,0.3)",
+          color: "#fecaca",
+          padding: "8px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16,
+          fontSize: 13,
+          fontFamily: "'DM Sans', sans-serif",
+          fontWeight: 500,
+          letterSpacing: "0.2px",
+        }}>
+          <span>⚠️</span>
+          <span>
+            You are acting as <strong style={{ color: "#fca5a5" }}>{impersonating.email}</strong>
+            <span style={{ opacity: 0.6, marginLeft: 6 }}>({impersonating.role})</span>
+          </span>
+          <button
+            onClick={exitImpersonation}
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(248,113,113,0.4)",
+              color: "#fca5a5",
+              borderRadius: 8,
+              padding: "4px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+              transition: "all 0.15s",
+            }}
+          >
+            Exit Impersonation
+          </button>
+        </div>
+      )}
       <header className="nb-root">
         {/* Gold top line accent */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: `linear-gradient(90deg,transparent,${C.gold}50 30%,${C.gold}50 70%,transparent)`, pointerEvents: "none" }} />
