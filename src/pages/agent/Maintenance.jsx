@@ -71,16 +71,14 @@ function CreateModal({onClose,onSuccess,notify}){
 function DetailModal({item,onClose,onRefresh,notify}){
   const [tab,setTab]=useState("details");
   const [stForm,setStForm]=useState({status:item.status,actual_cost:item.actual_cost||""});
-  const [assignId,setAssignId]=useState(item.assigned_to||"");
   const [editF,setEditF]=useState({title:item.title,description:item.description||"",category:item.category,priority:item.priority,estimated_cost:item.estimated_cost||"",actual_cost:item.actual_cost||""});
   const [saving,setSaving]=useState(false);
   const done=(msg)=>{notify(msg);onRefresh();onClose()};
 
   const updateStatus=async()=>{setSaving(true);try{await api.patch(`/api/maintenance/${item.id}/status`,{status:stForm.status,actual_cost:stForm.actual_cost?Number(stForm.actual_cost):null});done("Status updated ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
-  const assign=async()=>{if(!assignId){notify("Enter user ID","error");return}setSaving(true);try{await api.patch(`/api/maintenance/${item.id}/assign`,{assigned_to:Number(assignId)});done("Assigned ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
   const edit=async()=>{setSaving(true);try{await api.put(`/api/maintenance/${item.id}`,{title:editF.title,description:editF.description||null,category:editF.category,priority:editF.priority,estimated_cost:editF.estimated_cost?Number(editF.estimated_cost):null,actual_cost:editF.actual_cost?Number(editF.actual_cost):null});done("Saved ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
 
-  const tabs=[{id:"details",label:"Details"},{id:"status",label:"Update Status"},{id:"assign",label:"Assign"},{id:"edit",label:"Edit"}];
+  const tabs=[{id:"details",label:"Details"},{id:"status",label:"Update Status"},{id:"edit",label:"Edit"}];
   return(<Modal title={`Request #${item.id}`} onClose={onClose} wide>
     <div style={{display:"flex",gap:2,borderBottom:`1px solid ${C.border}`,marginBottom:20,marginTop:-4}}>
       {tabs.map(t=><button key={t.id} className="mn-btn" onClick={()=>setTab(t.id)} style={{padding:"8px 14px",background:"none",color:tab===t.id?C.dark:C.muted,fontWeight:tab===t.id?600:400,fontSize:13,borderBottom:tab===t.id?`2px solid ${C.gold}`:"2px solid transparent",marginBottom:-1}}>{t.label}</button>)}
@@ -97,11 +95,6 @@ function DetailModal({item,onClose,onRefresh,notify}){
       <Field label="New Status"><select className="mn-in" value={stForm.status} onChange={e=>setStForm(p=>({...p,status:e.target.value}))}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></Field>
       <Field label="Actual Cost (€)"><input className="mn-in" type="number" min="0" step="0.01" placeholder="0.00" value={stForm.actual_cost} onChange={e=>setStForm(p=>({...p,actual_cost:e.target.value}))}/></Field>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button className="mn-btn" onClick={onClose} style={{padding:"10px 18px",borderRadius:10,border:"1.5px solid #e4ddd0",background:"transparent",color:C.textSub,fontSize:13}}>Cancel</button><button className="mn-btn" onClick={updateStatus} disabled={saving} style={{padding:"10px 22px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#b0983e)`,color:C.dark,fontSize:13,fontWeight:700}}>{saving?"Updating...":"Update Status"}</button></div>
-    </div>)}
-    {tab==="assign"&&(<div>
-      <Field label="Assign to User ID"><input className="mn-in" type="number" min="1" placeholder="e.g. 5" value={assignId} onChange={e=>setAssignId(e.target.value)}/></Field>
-      <p style={{fontSize:12,color:C.textMut,marginBottom:16}}>Assigning will set status to IN_PROGRESS automatically.</p>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button className="mn-btn" onClick={onClose} style={{padding:"10px 18px",borderRadius:10,border:"1.5px solid #e4ddd0",background:"transparent",color:C.textSub,fontSize:13}}>Cancel</button><button className="mn-btn" onClick={assign} disabled={saving} style={{padding:"10px 22px",borderRadius:10,background:C.dark,color:"#f5f0e8",fontSize:13,fontWeight:600}}>{saving?"Assigning...":"Assign"}</button></div>
     </div>)}
     {tab==="edit"&&(<div>
       <Field label="Title" required><input className="mn-in" value={editF.title} onChange={e=>setEditF(p=>({...p,title:e.target.value}))} maxLength={255}/></Field>
