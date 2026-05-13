@@ -1,6 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext  } from "react";
+import { AuthContext } from "../../context/AuthProvider";
 import MainLayout from "../../components/layout/Layout";
 import api from "../../api/axios";
+
+const INP_S = {width:"100%",padding:"10px 13px",border:"1.5px solid #e4ddd0",borderRadius:10,fontSize:13.5,color:"#1a1714",background:"#fff",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",outline:"none",transition:"border-color 0.2s"};
+const SEL_S = {...INP_S,cursor:"pointer"};
+const BTN_PRI = {padding:"10px 22px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#c9b87a,#b0983e)",color:"#1a1714",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
+const BTN_SEC = {padding:"10px 18px",borderRadius:10,border:"1.5px solid #e4ddd0",background:"transparent",color:"#6b6248",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
+ 
  
 // ─── Global CSS ───────────────────────────────────────────────────────────────
 const CSS = `
@@ -178,6 +185,133 @@ function validateRejection(reason, notify) {
   return true;
 }
  
+function Modal({ title, onClose, children, wide = false }) {
+  useEffect(() => {
+    const h = e => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+  }, [onClose]);
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()}
+      style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(8,6,4,0.84)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{width:"100%",maxWidth:wide?720:520,background:"#faf7f2",borderRadius:18,boxShadow:"0 44px 100px rgba(0,0,0,0.55)",maxHeight:"92vh",overflowY:"auto"}}>
+        <div style={{background:"linear-gradient(160deg,#141210 0%,#1e1a14 45%,#241e16 100%)",padding:"18px 24px",borderBottom:"1px solid rgba(201,184,122,0.14)",display:"flex",alignItems:"center",justifyContent:"space-between",borderRadius:"18px 18px 0 0",position:"relative"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"2px",background:"linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)",borderRadius:"18px 18px 0 0"}}/>
+          <span style={{fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:700,fontSize:17,color:"#f5f0e8"}}>{title}</span>
+          <button onClick={onClose} style={{background:"rgba(245,240,232,0.08)",border:"1px solid rgba(245,240,232,0.12)",borderRadius:8,width:30,height:30,cursor:"pointer",color:"rgba(245,240,232,0.6)",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+        </div>
+        <div style={{padding:"22px 24px"}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children, required }) {
+  return (
+    <div style={{marginBottom:14}}>
+      <label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#9a8c6e",textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:6,fontFamily:"'DM Sans',sans-serif"}}>
+        {label}{required && <span style={{color:"#c0392b",marginLeft:2}}>*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function FormRow({ children }) {
+  return <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>{children}</div>;
+}
+
+function ContractModal({ initial, prefill, onClose, onSuccess, notify }) {
+  const [form, setForm] = useState({
+    property_id: initial?.property_id ?? prefill?.propertyId ?? "",
+    listing_id:  initial?.listing_id  ?? prefill?.listingId  ?? "",
+    buyer_id:    initial?.buyer_id    ?? prefill?.buyerId    ?? "",
+    sale_price:  initial?.sale_price  ?? prefill?.price      ?? "",
+    currency:    initial?.currency    ?? "EUR",
+    contract_date:     initial?.contract_date     ?? "",
+    handover_date:     initial?.handover_date     ?? "",
+    contract_file_url: initial?.contract_file_url ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  const handleSubmit = async () => {
+    if (!form.property_id || !form.buyer_id || !form.sale_price) {
+      notify("Property ID, Buyer ID dhe çmimi janë të detyrueshme", "error"); return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        property_id:       Number(form.property_id),
+        listing_id:        form.listing_id ? Number(form.listing_id) : null,
+        buyer_id:          Number(form.buyer_id),
+        sale_price:        Number(form.sale_price),
+        currency:          form.currency,
+        contract_date:     form.contract_date     || null,
+        handover_date:     form.handover_date     || null,
+        contract_file_url: form.contract_file_url || null,
+      };
+      initial
+        ? await api.put(`/api/sales/contracts/${initial.id}`, payload)
+        : await api.post("/api/sales/contracts", payload);
+      onSuccess();
+    } catch (err) { notify(err.response?.data?.message || "Gabim", "error"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={initial ? `Edit Contract #${initial.id}` : "New Sale Contract"} onClose={onClose} wide>
+      <FormRow>
+        <Field label="Property ID" required>
+          <input className="sa-input" style={INP_S} type="number" value={form.property_id}
+            onChange={e => set("property_id", e.target.value)} disabled={!!initial} placeholder="ex: 42"/>
+        </Field>
+        <Field label="Listing ID">
+          <input className="sa-input" style={INP_S} type="number" value={form.listing_id}
+            onChange={e => set("listing_id", e.target.value)} placeholder="(opcional)"/>
+        </Field>
+      </FormRow>
+      <FormRow>
+        <Field label="Buyer ID" required>
+          <input className="sa-input" style={INP_S} type="number" value={form.buyer_id}
+            onChange={e => set("buyer_id", e.target.value)} disabled={!!initial} placeholder="ID e blerësit"/>
+        </Field>
+        <Field label="Sale Price" required>
+          <input className="sa-input" style={INP_S} type="number" value={form.sale_price}
+            onChange={e => set("sale_price", e.target.value)} placeholder="ex: 145000"/>
+        </Field>
+      </FormRow>
+      <FormRow>
+        <Field label="Currency">
+          <select className="sa-select" style={SEL_S} value={form.currency} onChange={e => set("currency", e.target.value)}>
+            <option>EUR</option><option>USD</option><option>ALL</option>
+          </select>
+        </Field>
+        <Field label="Contract Date">
+          <input className="sa-input" style={INP_S} type="date" value={form.contract_date}
+            onChange={e => set("contract_date", e.target.value)}/>
+        </Field>
+      </FormRow>
+      <FormRow>
+        <Field label="Handover Date">
+          <input className="sa-input" style={INP_S} type="date" value={form.handover_date}
+            onChange={e => set("handover_date", e.target.value)} min={form.contract_date || undefined}/>
+        </Field>
+        <Field label="Contract File URL">
+          <input className="sa-input" style={INP_S} value={form.contract_file_url}
+            onChange={e => set("contract_file_url", e.target.value)} placeholder="https://..."/>
+        </Field>
+      </FormRow>
+      <div style={{display:"flex",gap:9,justifyContent:"flex-end",marginTop:6}}>
+        <button style={BTN_SEC} onClick={onClose}>Anulo</button>
+        <button style={BTN_PRI} onClick={handleSubmit} disabled={saving}>
+          {saving ? "Duke ruajtur..." : initial ? "Ruaj ndryshimet" : "Krijo kontratë"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
 // ─── Shared Components ────────────────────────────────────────────────────────
 function Toast({ msg, type = "success", onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
@@ -274,7 +408,7 @@ function SectionHeader({ title, count, badge, children }) {
 }
  
 // ─── App Detail Modal ─────────────────────────────────────────────────────────
-function AppDetailModal({ app, onClose, onUpdateStatus, notify }) {
+function AppDetailModal({ app, onClose, onUpdateStatus, notify, onCreateContract, currentUserId  }) {
   const [rejReason,  setRejReason]  = useState(app.rejection_reason || "");
   const [showReject, setShowReject] = useState(false);
   const [saving,     setSaving]     = useState(false);
@@ -317,9 +451,10 @@ function AppDetailModal({ app, onClose, onUpdateStatus, notify }) {
     { label: "Ndryshuar",         value: fmtDT(app.updated_at)                                      },
   ];
  
-  const canApproveReject = app.status === "PENDING";
-  const canCancel        = app.status === "PENDING" || app.status === "APPROVED";
- 
+  const isOwner          = app.agent_id === currentUserId;
+  const canApproveReject = app.status === "PENDING"  && isOwner;
+  const canCancel        = (app.status === "PENDING" || app.status === "APPROVED") && isOwner;
+  
   return (
     <div
       style={{
@@ -462,7 +597,23 @@ function AppDetailModal({ app, onClose, onUpdateStatus, notify }) {
               </p>
             </div>
           )}
- 
+
+          {/* Contract shortcut — shfaqet kur APPROVED */}
+          {app.status === "APPROVED" && isOwner && (
+            <div style={{ marginBottom: 16 }}>
+              <button className="sa-btn" onClick={() => onCreateContract(app)}
+                style={{
+                  width: "100%", padding: "11px 0",
+                  background: "linear-gradient(135deg,#c9b87a,#b0983e)",
+                  color: "#1a1714", border: "none", borderRadius: 10,
+                  fontSize: 13, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}>
+                📄 Krijo Sale Contract →
+              </button>
+            </div>
+          )}
+          
           {/* Actions */}
           {(canApproveReject || canCancel) && (
             <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 18 }}>
@@ -542,6 +693,19 @@ function AppDetailModal({ app, onClose, onUpdateStatus, notify }) {
               )}
             </div>
           )}
+
+          {!isOwner && app.status === "PENDING" && (
+            <div style={{
+              background: "#f5f2eb", border: "1px solid #e8e2d6",
+              borderRadius: 10, padding: "12px 16px", marginTop: 4,
+              display: "flex", alignItems: "center", gap: 9,
+            }}>
+              <span style={{ fontSize: 16 }}>👁</span>
+              <p style={{ margin: 0, fontSize: 13, color: "#9a8c6e", lineHeight: 1.5 }}>
+                Ky aplikim i përket një listingu të agjentit tjetër. Mund ta shohësh por nuk mund të ndërhysh.
+              </p>
+            </div>
+          )}
  
         </div>
       </div>
@@ -550,7 +714,7 @@ function AppDetailModal({ app, onClose, onUpdateStatus, notify }) {
 }
  
 // ─── Applications Table ───────────────────────────────────────────────────────
-function ApplicationsTable({ applications, loading, onOpenApp, onQuickApprove, onQuickReject, emptyTitle, emptySub }) {
+function ApplicationsTable({ applications, loading, onOpenApp, onQuickApprove, onQuickReject, onCreateContract, currentUserId,emptyTitle, emptySub }) {
   if (loading) return <Skeleton rows={5} h={58} />;
   if (applications.length === 0) return <EmptyState icon="🏠" title={emptyTitle} sub={emptySub} />;
  
@@ -561,6 +725,7 @@ function ApplicationsTable({ applications, loading, onOpenApp, onQuickApprove, o
           <tr>
             <th>#</th>
             <th>Buyer</th>
+            <th>Ownership</th>
             <th>Listing</th>
             <th>Property</th>
             <th>Oferta</th>
@@ -576,6 +741,12 @@ function ApplicationsTable({ applications, loading, onOpenApp, onQuickApprove, o
             <tr key={app.id} className="sa-row" style={{ transition: "background 0.15s", animationDelay: `${i * 0.04}s` }}>
               <td style={{ color: C.textMut, fontSize: 12 }}>{app.id}</td>
               <td style={{ fontWeight: 500 }}>{app.buyer_name || `#${app.buyer_id}`}</td>
+              <td>
+                {app.agent_id === currentUserId
+                  ? <span style={{ background: "rgba(201,184,122,0.12)", color: "#8a7230", border: "1px solid rgba(201,184,122,0.3)", padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600 }}>👤 Unë</span>
+                  : <span style={{ background: "#f0ece3", color: "#b0a890", border: "1px solid #e4ddd0", padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 500 }}>👁 Vetëm shiko</span>
+                }
+              </td>
               <td style={{ fontSize: 12.5, color: C.textSub }}>
                 {app.listing_id ? `#${app.listing_id}` : "—"}
               </td>
@@ -593,8 +764,9 @@ function ApplicationsTable({ applications, loading, onOpenApp, onQuickApprove, o
               </td>
               <td><StatusPill status={app.status} /></td>
               <td style={{ fontSize: 12, color: C.textMut }}>{fmtDT(app.created_at)}</td>
-              <td>
+             <td>
                 <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                  {/* View — gjithmonë i dukshëm */}
                   <button className="sa-btn" onClick={() => onOpenApp(app)}
                     style={{
                       padding: "5px 11px", borderRadius: 8,
@@ -603,25 +775,52 @@ function ApplicationsTable({ applications, loading, onOpenApp, onQuickApprove, o
                     }}>
                     View
                   </button>
-                  {app.status === "PENDING" && (
+
+                  {/* Veprimet — vetëm nëse ky listing është i agjentit aktual */}
+                  {app.agent_id === currentUserId ? (
                     <>
-                      <button className="sa-btn" onClick={() => onQuickApprove(app.id)}
-                        title="Aprovo"
-                        style={{
-                          width: 30, height: 30, borderRadius: 8,
-                          background: "#ecfdf5", color: "#059669",
-                          border: "1px solid #a7f3d0",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-                        }}>✓</button>
-                      <button className="sa-btn" onClick={() => onQuickReject(app)}
-                        title="Refuzo"
-                        style={{
-                          width: 30, height: 30, borderRadius: 8,
-                          background: "#fef2f2", color: "#dc2626",
-                          border: "1px solid #fecaca",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-                        }}>✕</button>
+                      {app.status === "PENDING" && (
+                        <>
+                          <button className="sa-btn" onClick={() => onQuickApprove(app.id)}
+                            title="Aprovo"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8,
+                              background: "#ecfdf5", color: "#059669",
+                              border: "1px solid #a7f3d0",
+                              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+                            }}>✓</button>
+                          <button className="sa-btn" onClick={() => onQuickReject(app)}
+                            title="Refuzo"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8,
+                              background: "#fef2f2", color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+                            }}>✕</button>
+                        </>
+                      )}
+                      {app.status === "APPROVED" && (
+                        <button className="sa-btn" onClick={() => onCreateContract(app)}
+                          title="Krijo kontratë"
+                          style={{
+                            padding: "5px 10px", borderRadius: 8, fontSize: 11.5, fontWeight: 700,
+                            background: "linear-gradient(135deg,#c9b87a,#b0983e)",
+                            color: "#1a1714", border: "none", cursor: "pointer",
+                            fontFamily: "'DM Sans',sans-serif",
+                          }}>
+                          📄 Contract
+                        </button>
+                      )}
                     </>
+                  ) : (
+                    /* Agjent tjetër — vetëm shiko */
+                    <span style={{
+                      fontSize: 11, color: "#b0a890", fontStyle: "italic",
+                      background: "#f5f2eb", padding: "3px 9px",
+                      borderRadius: 999, border: "1px solid #e8e2d6",
+                    }}>
+                      vetëm shiko
+                    </span>
                   )}
                 </div>
               </td>
@@ -695,7 +894,12 @@ export default function AgentSaleApplications() {
   // ── Modal & Toast ──────────────────────────────────────────────────────────
   const [selectedApp, setSelectedApp] = useState(null);
   const [toast,       setToast]       = useState(null);
+  const [contractPrefill,    setContractPrefill]    = useState(null);
+  const [showContractModal,  setShowContractModal]  = useState(false);
  
+  const { user } = useContext(AuthContext);
+  const currentUserId = user?.id;
+
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
  
@@ -762,7 +966,9 @@ export default function AgentSaleApplications() {
  
   // Initial load
   useEffect(() => { fetchMyApps(0); }, [fetchMyApps]);
- 
+  useEffect(() => {
+    if (contractPrefill) setShowContractModal(true);
+  }, [contractPrefill]);
   // Load status tab when opened
   useEffect(() => {
     if (activeTab === "status") fetchByStatus(statusFilter, 0);
@@ -789,11 +995,22 @@ export default function AgentSaleApplications() {
       if (selectedApp?.id === appId) {
         setSelectedApp(prev => ({ ...prev, status, rejection_reason: reason || prev.rejection_reason }));
       }
-      notify(`Aplikimi #${appId} → ${status}`);
+       notify(`Aplikimi #${appId} → ${status}`);
+
+      if (status === "APPROVED") {
+        const all = [...myApps, ...listingApps, ...propertyApps, ...statusApps];
+        const found = all.find(a => a.id === appId);
+        if (found) setContractPrefill({ ...found, status: "APPROVED" });
+      }
     } catch (err) {
       notify(err.response?.data?.message || "Gabim gjatë ndryshimit të statusit", "error");
     }
   };
+  
+  const handleCreateContract = useCallback((app) => {
+    setContractPrefill(app);
+    setShowContractModal(true);
+  }, []);
  
   // ── Stats (from myApps or current visible list) ────────────────────────────
   const currentList =
@@ -906,6 +1123,8 @@ export default function AgentSaleApplications() {
                   onOpenApp={setSelectedApp}
                   onQuickApprove={(id) => handleUpdateStatus(id, "APPROVED", null)}
                   onQuickReject={(app) => { setSelectedApp(app); }}
+                  onCreateContract={handleCreateContract}
+                  currentUserId={currentUserId}
                   emptyTitle="Asnjë aplikim akoma"
                   emptySub="Klientët do të aplikojnë sapo të shfaqni listingjet tuaja."
                 />
@@ -948,6 +1167,8 @@ export default function AgentSaleApplications() {
                   onOpenApp={setSelectedApp}
                   onQuickApprove={(id) => handleUpdateStatus(id, "APPROVED", null)}
                   onQuickReject={(app) => { setSelectedApp(app); }}
+                  onCreateContract={handleCreateContract}
+                  currentUserId={currentUserId}
                   emptyTitle={listingSearched ? "Nuk ka aplikime" : "Asnjë kërkim akoma"}
                   emptySub={listingSearched
                     ? `Nuk u gjetën aplikime për Listing #${listingId}`
@@ -992,6 +1213,8 @@ export default function AgentSaleApplications() {
                   onOpenApp={setSelectedApp}
                   onQuickApprove={(id) => handleUpdateStatus(id, "APPROVED", null)}
                   onQuickReject={(app) => { setSelectedApp(app); }}
+                  onCreateContract={handleCreateContract}
+                  currentUserId={currentUserId}
                   emptyTitle={propertySearched ? "Nuk ka aplikime" : "Asnjë kërkim akoma"}
                   emptySub={propertySearched
                     ? `Nuk u gjetën aplikime për Property #${propertyId}`
@@ -1028,6 +1251,8 @@ export default function AgentSaleApplications() {
                   onOpenApp={setSelectedApp}
                   onQuickApprove={(id) => handleUpdateStatus(id, "APPROVED", null)}
                   onQuickReject={(app) => { setSelectedApp(app); }}
+                  onCreateContract={handleCreateContract}
+                  currentUserId={currentUserId}
                   emptyTitle={`Asnjë aplikim me status ${statusFilter}`}
                   emptySub="Provo një status tjetër ose rikontrollo më vonë."
                 />
@@ -1044,6 +1269,28 @@ export default function AgentSaleApplications() {
             app={selectedApp}
             onClose={() => setSelectedApp(null)}
             onUpdateStatus={handleUpdateStatus}
+            notify={notify}
+            onCreateContract={handleCreateContract}
+            currentUserId={currentUserId}
+          />
+        )}
+
+        {/* Contract Modal */}
+        {showContractModal && contractPrefill && (
+          <ContractModal
+            initial={null}
+            prefill={{
+              propertyId: contractPrefill.property_id,
+              listingId:  contractPrefill.listing_id,
+              price:      contractPrefill.offer_price,
+              buyerId:    contractPrefill.buyer_id,
+            }}
+            onClose={() => { setShowContractModal(false); setContractPrefill(null); }}
+            onSuccess={() => {
+              setShowContractModal(false);
+              setContractPrefill(null);
+              notify("Kontrata u krijua me sukses ✓");
+            }}
             notify={notify}
           />
         )}
