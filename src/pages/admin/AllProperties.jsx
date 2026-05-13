@@ -1314,7 +1314,9 @@ function AllPropertiesContent() {
 export default function AdminProperties() {
   return (
     <MainLayout role="admin">
+      <div style={{ backgroundColor: "#f2ede4", minHeight: "100vh", padding: 24 }}>
       <AllPropertiesContent />
+      </div>
     </MainLayout>
   );
 }
