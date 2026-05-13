@@ -14,11 +14,11 @@ const ALL_TYPES      = ["APARTMENT", "HOUSE", "VILLA", "COMMERCIAL", "LAND", "OF
 const ALL_LISTINGS   = ["SALE", "RENT", "BOTH"];
 
 const STATUS_BADGE = {
-  AVAILABLE: { bg: "#EAF3DE", color: "#3B6D11" },
-  SOLD:      { bg: "#FCEBEB", color: "#A32D2D" },
-  PENDING:   { bg: "#FAEEDA", color: "#854F0B" },
-  RENTED:    { bg: "#E6F1FB", color: "#185FA5" },
-  INACTIVE:  { bg: "#F1EFE8", color: "#5F5E5A" },
+  AVAILABLE: { bg: "rgba(29,158,117,0.15)", color: "#1D9E75",  border: "rgba(29,158,117,0.3)"  },
+  SOLD:      { bg: "rgba(216,90,48,0.15)",  color: "#D85A30",  border: "rgba(216,90,48,0.3)"   },
+  PENDING:   { bg: "rgba(201,184,122,0.15)",color: "#c9b87a",  border: "rgba(201,184,122,0.3)" },
+  RENTED:    { bg: "rgba(55,138,221,0.15)", color: "#378ADD",  border: "rgba(55,138,221,0.3)"  },
+  INACTIVE:  { bg: "rgba(136,135,128,0.15)",color: "#888780",  border: "rgba(136,135,128,0.3)" },
 };
 
 const COLUMNS = [
@@ -35,10 +35,35 @@ const COLUMNS = [
 ];
 const TABLE_MIN_WIDTH = COLUMNS.reduce((s, c) => s + c.width, 0);
 
+// ─── Global CSS ───────────────────────────────────────────────────────────────
+
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  .ap-wrap * { box-sizing: border-box; }
+  .ap-wrap { font-family: 'DM Sans', system-ui, sans-serif; }
+
+  .ap-row:hover td { background: rgba(138,125,94,0.06) !important; }
+  .ap-row { transition: opacity 0.5s; }
+
+  .ap-th-sort:hover { color: #c9b87a !important; }
+
+  .ap-btn-action { transition: all 0.14s ease; }
+  .ap-btn-action:hover { transform: translateY(-1px); opacity: 0.85; }
+
+  .ap-pg:hover:not(:disabled) { background: rgba(201,184,122,0.1) !important; border-color: #c9b87a !important; color: #c9b87a !important; }
+
+  @keyframes ap-fade-up  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  @keyframes ap-scale-in { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+  @keyframes ap-spin     { to{transform:rotate(360deg)} }
+  @keyframes ap-toast    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes ap-pulse    { 0%,100%{opacity:.35} 50%{opacity:.75} }
+`;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmtPrice = (v, cur = "EUR") =>
-  v != null ? `€${Number(v).toLocaleString("de-DE")} ${cur}` : "—";
+  v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "—";
@@ -49,10 +74,17 @@ function Badge({ status }) {
   const s = STATUS_BADGE[status] || STATUS_BADGE.INACTIVE;
   return (
     <span style={{
-      background: s.bg, color: s.color,
-      fontSize: 11, fontWeight: 500,
-      padding: "3px 8px", borderRadius: 999,
-      whiteSpace: "nowrap", display: "inline-block",
+      background: s.bg,
+      color: s.color,
+      border: `1px solid ${s.border}`,
+      fontSize: 10.5,
+      fontWeight: 600,
+      letterSpacing: "0.4px",
+      padding: "3px 10px",
+      borderRadius: 999,
+      whiteSpace: "nowrap",
+      display: "inline-block",
+      fontFamily: "'DM Sans', sans-serif",
     }}>{status}</span>
   );
 }
@@ -60,17 +92,21 @@ function Badge({ status }) {
 function SchemaTag({ name }) {
   return (
     <span style={{
-      fontFamily: "monospace", fontSize: 11,
-      background: "var(--color-background-tertiary,#f4f4f2)",
-      color: "var(--color-text-secondary)",
-      padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap",
+      fontFamily: "monospace",
+      fontSize: 10.5,
+      background: "rgba(138,125,94,0.1)",
+      color: "#8a7d5e",
+      border: "1px solid rgba(138,125,94,0.2)",
+      padding: "2px 8px",
+      borderRadius: 6,
+      whiteSpace: "nowrap",
     }}>{name || "—"}</span>
   );
 }
 
 function SortArrow({ active, asc }) {
   return (
-    <span style={{ marginLeft: 4, opacity: active ? 1 : 0.28, fontSize: 11 }}>
+    <span style={{ marginLeft: 4, opacity: active ? 1 : 0.28, fontSize: 10, color: active ? "#c9b87a" : "inherit" }}>
       {active ? (asc ? "↑" : "↓") : "↕"}
     </span>
   );
@@ -78,55 +114,95 @@ function SortArrow({ active, asc }) {
 
 function Toast({ msg, type = "success", onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
-  const bg = type === "error" ? "#fee2e2" : "#ecfdf5";
-  const co = type === "error" ? "#b91c1c" : "#047857";
   return (
     <div style={{
-      position: "fixed", bottom: 28, right: 28, zIndex: 9999,
-      background: bg, color: co, padding: "12px 20px", borderRadius: 10,
-      fontSize: 13, fontWeight: 500,
-      boxShadow: "0 4px 18px rgba(0,0,0,0.12)", maxWidth: 340,
-    }}>{msg}</div>
+      position: "fixed", bottom: 26, right: 26, zIndex: 9999,
+      background: "#1a1714",
+      color: type === "error" ? "#f09090" : "#90c8a8",
+      padding: "11px 18px", borderRadius: 12,
+      fontSize: 13, fontWeight: 400,
+      boxShadow: "0 10px 36px rgba(0,0,0,0.32)",
+      border: `1px solid ${type === "error" ? "rgba(240,128,128,0.15)" : "rgba(144,200,168,0.15)"}`,
+      maxWidth: 340,
+      fontFamily: "'DM Sans', sans-serif",
+      animation: "ap-toast 0.2s ease",
+      display: "flex", alignItems: "center", gap: 8,
+    }}>
+      <span style={{ fontSize: 14 }}>{type === "error" ? "⚠️" : "✅"}</span>
+      {msg}
+    </div>
   );
 }
 
-// ─── Delete Modal — same style as AgentSales.jsx ──────────────────────────────
+// ─── Overlay base ─────────────────────────────────────────────────────────────
 
-function DeleteModal({ target, onCancel, onConfirm, loading }) {
-  if (!target) return null;
+function Overlay({ children, onClose, loading }) {
   return (
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(15,23,42,0.45)",
+        background: "rgba(8,6,4,0.82)",
+        backdropFilter: "blur(10px)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        fontFamily: "'DM Sans', sans-serif",
       }}
-      onClick={(e) => e.target === e.currentTarget && !loading && onCancel()}
+      onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
-      <div style={{
-        width: "100%", maxWidth: 480, background: "#ffffff", borderRadius: 16,
-        boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "18px 24px", borderBottom: "1px solid #e8edf4",
-        }}>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>Konfirmo fshirjen</span>
-          <button onClick={onCancel} disabled={loading} style={{
-            width: 30, height: 30, display: "flex", alignItems: "center",
-            justifyContent: "center", border: "none", background: "none",
-            color: "#94a3b8", cursor: "pointer", fontSize: 16, borderRadius: 6,
-          }}>✕</button>
-        </div>
+      {children}
+    </div>
+  );
+}
+
+const ModalBox = ({ children, maxWidth = 480 }) => (
+  <div style={{
+    width: "100%", maxWidth,
+    background: "#faf7f2",
+    borderRadius: 18,
+    boxShadow: "0 44px 100px rgba(0,0,0,0.55)",
+    animation: "ap-scale-in 0.22s ease",
+    overflow: "hidden",
+  }}>
+    {children}
+  </div>
+);
+
+const ModalHeader = ({ title, onClose, loading }) => (
+  <div style={{
+    padding: "18px 24px",
+    borderBottom: "1px solid rgba(138,125,94,0.15)",
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+  }}>
+    <span style={{
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
+      fontWeight: 700, fontSize: 17, color: "#1a1714",
+    }}>{title}</span>
+    <button onClick={onClose} disabled={loading} style={{
+      width: 30, height: 30, display: "flex", alignItems: "center",
+      justifyContent: "center", border: "1px solid rgba(138,125,94,0.2)",
+      background: "rgba(138,125,94,0.08)",
+      color: "#8a7d5e", cursor: "pointer", fontSize: 15, borderRadius: 8,
+    }}>✕</button>
+  </div>
+);
+
+// ─── Delete Modal ─────────────────────────────────────────────────────────────
+
+function DeleteModal({ target, onCancel, onConfirm, loading }) {
+  if (!target) return null;
+  return (
+    <Overlay onClose={onCancel} loading={loading}>
+      <ModalBox maxWidth={480}>
+        <ModalHeader title="Konfirmo fshirjen" onClose={onCancel} loading={loading} />
         <div style={{ padding: "22px 24px" }}>
-          <p style={{ fontSize: 14, color: "#475569", marginBottom: 20 }}>
+          <p style={{ fontSize: 14, color: "#4a4438", marginBottom: 20, lineHeight: 1.6 }}>
             A jeni i sigurt që dëshironi të fshini pronën{" "}
-            <strong>#{target.id} — "{target.title || "Untitled"}"</strong>?
+            <strong style={{ color: "#1a1714" }}>#{target.id} — "{target.title || "Untitled"}"</strong>?
           </p>
           <div style={{
-            background: "#fef2f2", border: "1px solid #fecaca",
-            borderRadius: 8, padding: "10px 14px", marginBottom: 22,
-            fontSize: 13, color: "#b91c1c",
+            background: "rgba(216,90,48,0.08)",
+            border: "1px solid rgba(216,90,48,0.2)",
+            borderRadius: 10, padding: "12px 15px", marginBottom: 22,
+            fontSize: 13, color: "#D85A30",
           }}>
             <p style={{ margin: "0 0 4px", fontWeight: 600 }}>
               This will hide the property from all tenants.
@@ -135,20 +211,20 @@ function DeleteModal({ target, onCancel, onConfirm, loading }) {
               The record is not physically deleted — it is marked with{" "}
               <code style={{
                 fontFamily: "monospace", fontSize: 12,
-                background: "#fecaca", padding: "1px 5px", borderRadius: 3,
+                background: "rgba(216,90,48,0.12)", padding: "1px 6px", borderRadius: 4,
               }}>deleted_at</code>{" "}
-              and will no longer appear in any listing, search, or filter result across all schemas.
+              and will no longer appear in any listing or search result.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button className="btn btn--secondary" onClick={onCancel} disabled={loading}>Anulo</button>
-            <button className="btn btn--danger"    onClick={onConfirm} disabled={loading}>
-              {loading ? "Duke fshirë..." : "Fshi"}
+            <button onClick={onCancel} disabled={loading} style={secondaryBtn}>Anulo</button>
+            <button onClick={onConfirm} disabled={loading} style={dangerBtn}>
+              {loading ? "Duke fshirë..." : "Fshi pronën"}
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </ModalBox>
+    </Overlay>
   );
 }
 
@@ -161,7 +237,6 @@ function StatusModal({ target, onClose, onSuccess, notify }) {
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      // PATCH /api/properties/{id}/status
       await api.patch(`/api/properties/${target.id}/status`, { status });
       notify(`Statusi u ndryshua në ${status}`);
       onSuccess();
@@ -172,52 +247,43 @@ function StatusModal({ target, onClose, onSuccess, notify }) {
     }
   };
 
-  const colors = {
-    AVAILABLE: { bg: "#ecfdf5", border: "#a7f3d0", color: "#047857" },
-    SOLD:      { bg: "#fef2f2", border: "#fecaca", color: "#b91c1c" },
-    RENTED:    { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
-    PENDING:   { bg: "#fffbeb", border: "#fde68a", color: "#92400e" },
-    INACTIVE:  { bg: "#f8fafc", border: "#e2e8f0", color: "#475569" },
-  };
-  const c = colors[status] || colors.INACTIVE;
+  const preview = STATUS_BADGE[status] || STATUS_BADGE.INACTIVE;
 
   return (
-    <Modal title={`Ndrysho statusin — Prona #${target.id}`} onClose={onClose}>
-      <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-        Statusi aktual:{" "}
-        <Badge status={target.status} />
-      </p>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-          Statusi i ri <span style={{ color: "#ef4444" }}>*</span>
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          style={{
-            width: "100%", padding: "9px 12px", fontSize: 14,
-            border: "1px solid #d1d5db", borderRadius: 8,
-            background: "#fff", color: "#0f172a", cursor: "pointer", outline: "none",
-          }}
-        >
-          {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-      {/* Preview pill */}
-      <div style={{
-        background: c.bg, border: `1px solid ${c.border}`,
-        borderRadius: 8, padding: "10px 14px", marginBottom: 20,
-        fontSize: 13, color: c.color, fontWeight: 500,
-      }}>
-        Admin override → prona do të shënohet si <strong>{status}</strong> menjëherë.
-      </div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button className="btn btn--secondary" onClick={onClose}>Anulo</button>
-        <button className="btn btn--primary" onClick={handleSubmit} disabled={saving}>
-          {saving ? "Duke ndryshuar..." : `Konfirmo — ${status}`}
-        </button>
-      </div>
-    </Modal>
+    <Overlay onClose={onClose}>
+      <ModalBox maxWidth={460}>
+        <ModalHeader title={`Ndrysho statusin — #${target.id}`} onClose={onClose} />
+        <div style={{ padding: "20px 24px" }}>
+          <p style={{ fontSize: 13, color: "#8a7d5e", marginBottom: 16 }}>
+            Statusi aktual: <Badge status={target.status} />
+          </p>
+          <div style={{ marginBottom: 16 }}>
+            <label style={fieldLabel}>Statusi i ri <span style={{ color: "#D85A30" }}>*</span></label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              style={selectSt}
+            >
+              {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div style={{
+            background: preview.bg,
+            border: `1px solid ${preview.border}`,
+            borderRadius: 10, padding: "10px 14px", marginBottom: 20,
+            fontSize: 13, color: preview.color, fontWeight: 500,
+          }}>
+            Admin override → prona do të shënohet si <strong>{status}</strong> menjëherë.
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={secondaryBtn}>Anulo</button>
+            <button onClick={handleSubmit} disabled={saving} style={primaryBtn}>
+              {saving ? "Duke ndryshuar..." : `Konfirmo — ${status}`}
+            </button>
+          </div>
+        </div>
+      </ModalBox>
+    </Overlay>
   );
 }
 
@@ -226,14 +292,13 @@ function StatusModal({ target, onClose, onSuccess, notify }) {
 function AgentModal({ agentId, onClose }) {
   const [props, setProps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage]   = useState(0);
+  const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const PAGE = 8;
 
-  const fetch = useCallback(async () => {
+  const fetchAgent = useCallback(async () => {
     setLoading(true);
     try {
-      // GET /api/properties/agent/{agentId}
       const res = await api.get(`/api/properties/agent/${agentId}`, {
         params: { page, size: PAGE },
       });
@@ -247,67 +312,69 @@ function AgentModal({ agentId, onClose }) {
     }
   }, [agentId, page]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchAgent(); }, [fetchAgent]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE));
 
   return (
-    <Modal title={`Pronat e Agjentit #${agentId}`} onClose={onClose} maxWidth={700}>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>Duke ngarkuar…</div>
-      ) : props.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>🏠</div>
-          <p style={{ fontSize: 14 }}>Ky agjent nuk ka prona aktive.</p>
-        </div>
-      ) : (
-        <>
-          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
-            {total} prona gjithsej
-          </p>
-          <div style={{ overflowX: "auto", borderRadius: 10, border: "1px solid #e8edf4" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  {["#", "Title", "Price", "Status", "Type", "Created"].map((h) => (
-                    <th key={h} style={{
-                      padding: "9px 12px", textAlign: "left",
-                      fontWeight: 500, fontSize: 12, color: "#64748b",
-                      borderBottom: "1px solid #e8edf4", whiteSpace: "nowrap",
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {props.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "9px 12px", color: "#94a3b8", fontFamily: "monospace", fontSize: 12 }}>#{p.id}</td>
-                    <td style={{ padding: "9px 12px", fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                      title={p.title}>{p.title}</td>
-                    <td style={{ padding: "9px 12px", fontWeight: 600 }}>{fmtPrice(p.price, p.currency)}</td>
-                    <td style={{ padding: "9px 12px" }}><Badge status={p.status} /></td>
-                    <td style={{ padding: "9px 12px", color: "#64748b" }}>{p.type}</td>
-                    <td style={{ padding: "9px 12px", color: "#94a3b8" }}>{fmtDate(p.created_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-              <button className="btn btn--secondary btn--sm"
-                disabled={page === 0} onClick={() => setPage((p) => p - 1)}>← Prev</button>
-              <span style={{ fontSize: 13, color: "#64748b", padding: "4px 8px" }}>
-                {page + 1} / {totalPages}
-              </span>
-              <button className="btn btn--secondary btn--sm"
-                disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next →</button>
+    <Overlay onClose={onClose}>
+      <ModalBox maxWidth={700}>
+        <ModalHeader title={`Pronat e Agjentit #${agentId}`} onClose={onClose} />
+        <div style={{ padding: "20px 24px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#8a7d5e" }}>
+              <div style={{ width: 24, height: 24, margin: "0 auto 12px", border: "2px solid rgba(138,125,94,0.2)", borderTop: "2px solid #8a7d5e", borderRadius: "50%", animation: "ap-spin .8s linear infinite" }} />
+              <p style={{ fontSize: 13 }}>Duke ngarkuar…</p>
             </div>
+          ) : props.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#b0a890" }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>🏠</div>
+              <p style={{ fontSize: 14 }}>Ky agjent nuk ka prona aktive.</p>
+            </div>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: "#8a7d5e", marginBottom: 14 }}>{total} prona gjithsej</p>
+              <div style={{ overflowX: "auto", borderRadius: 10, border: "1px solid rgba(138,125,94,0.15)" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "rgba(138,125,94,0.06)" }}>
+                      {["#", "Title", "Price", "Status", "Type", "Created"].map((h) => (
+                        <th key={h} style={{
+                          padding: "9px 12px", textAlign: "left",
+                          fontWeight: 500, fontSize: 11, color: "#8a7d5e",
+                          borderBottom: "1px solid rgba(138,125,94,0.12)",
+                          whiteSpace: "nowrap",
+                          textTransform: "uppercase", letterSpacing: "0.5px",
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {props.map((p) => (
+                      <tr key={p.id} style={{ borderBottom: "1px solid rgba(138,125,94,0.08)" }}>
+                        <td style={{ padding: "9px 12px", color: "#b0a890", fontFamily: "monospace", fontSize: 11 }}>#{p.id}</td>
+                        <td style={{ padding: "9px 12px", fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1a1714" }} title={p.title}>{p.title}</td>
+                        <td style={{ padding: "9px 12px", fontWeight: 600, color: "#1a1714" }}>{fmtPrice(p.price, p.currency)}</td>
+                        <td style={{ padding: "9px 12px" }}><Badge status={p.status} /></td>
+                        <td style={{ padding: "9px 12px", color: "#8a7d5e" }}>{p.type}</td>
+                        <td style={{ padding: "9px 12px", color: "#b0a890" }}>{fmtDate(p.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                  <button style={secondaryBtn} disabled={page === 0} onClick={() => setPage((p) => p - 1)}>← Prev</button>
+                  <span style={{ fontSize: 13, color: "#8a7d5e", padding: "4px 8px" }}>{page + 1} / {totalPages}</span>
+                  <button style={secondaryBtn} disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next →</button>
+                </div>
+              )}
+            </>
           )}
-        </>
-      )}
-    </Modal>
+        </div>
+      </ModalBox>
+    </Overlay>
   );
 }
 
@@ -321,7 +388,6 @@ function PriceHistoryModal({ target, onClose }) {
     (async () => {
       setLoading(true);
       try {
-        // GET /api/properties/{id}/price-history
         const res = await api.get(`/api/properties/${target.id}/price-history`);
         setHistory(res.data ?? []);
       } catch {
@@ -333,70 +399,70 @@ function PriceHistoryModal({ target, onClose }) {
   }, [target.id]);
 
   return (
-    <Modal title={`Price History — #${target.id} "${target.title}"`} onClose={onClose} maxWidth={620}>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>Duke ngarkuar…</div>
-      ) : history.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>📊</div>
-          <p style={{ fontSize: 14 }}>Nuk ka ndryshime çmimi të regjistruara.</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {history.map((h, i) => {
-            const isDown = h.old_price != null && Number(h.new_price) < Number(h.old_price);
-            const isUp   = h.old_price != null && Number(h.new_price) > Number(h.old_price);
-            return (
-              <div key={h.id} style={{
-                display: "flex", alignItems: "flex-start", gap: 14,
-                padding: "14px 16px", borderRadius: 10,
-                background: i === 0 ? "#f0f9ff" : "#f8fafc",
-                border: `1px solid ${i === 0 ? "#bae6fd" : "#e8edf4"}`,
-              }}>
-                {/* Arrow indicator */}
-                <div style={{
-                  width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: isDown ? "#fef2f2" : isUp ? "#ecfdf5" : "#f1f5f9",
-                  fontSize: 16,
-                }}>
-                  {isDown ? "↓" : isUp ? "↑" : "•"}
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
-                    {h.old_price != null && (
-                      <span style={{ fontSize: 13, color: "#94a3b8", textDecoration: "line-through" }}>
-                        {fmtPrice(h.old_price, h.currency)}
-                      </span>
-                    )}
-                    <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-                      {fmtPrice(h.new_price, h.currency)}
-                    </span>
-                    {i === 0 && (
-                      <span style={{
-                        fontSize: 11, fontWeight: 500, padding: "2px 8px",
-                        background: "#0ea5e9", color: "#fff", borderRadius: 999,
-                      }}>Latest</span>
-                    )}
+    <Overlay onClose={onClose}>
+      <ModalBox maxWidth={620}>
+        <ModalHeader title={`Price History — #${target.id} "${target.title}"`} onClose={onClose} />
+        <div style={{ padding: "20px 24px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#8a7d5e" }}>
+              <div style={{ width: 24, height: 24, margin: "0 auto 12px", border: "2px solid rgba(138,125,94,0.2)", borderTop: "2px solid #8a7d5e", borderRadius: "50%", animation: "ap-spin .8s linear infinite" }} />
+            </div>
+          ) : history.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#b0a890" }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📊</div>
+              <p style={{ fontSize: 14 }}>Nuk ka ndryshime çmimi të regjistruara.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {history.map((h, i) => {
+                const isDown = h.old_price != null && Number(h.new_price) < Number(h.old_price);
+                const isUp   = h.old_price != null && Number(h.new_price) > Number(h.old_price);
+                return (
+                  <div key={h.id} style={{
+                    display: "flex", alignItems: "flex-start", gap: 14,
+                    padding: "14px 16px", borderRadius: 12,
+                    background: i === 0 ? "rgba(55,138,221,0.06)" : "rgba(138,125,94,0.04)",
+                    border: `1px solid ${i === 0 ? "rgba(55,138,221,0.15)" : "rgba(138,125,94,0.12)"}`,
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: isDown ? "rgba(216,90,48,0.1)" : isUp ? "rgba(29,158,117,0.1)" : "rgba(138,125,94,0.1)",
+                      fontSize: 16,
+                      color: isDown ? "#D85A30" : isUp ? "#1D9E75" : "#8a7d5e",
+                    }}>
+                      {isDown ? "↓" : isUp ? "↑" : "•"}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                        {h.old_price != null && (
+                          <span style={{ fontSize: 13, color: "#b0a890", textDecoration: "line-through" }}>
+                            {fmtPrice(h.old_price, h.currency)}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1714", fontFamily: "'Cormorant Garamond', serif" }}>
+                          {fmtPrice(h.new_price, h.currency)}
+                        </span>
+                        {i === 0 && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: "2px 9px",
+                            background: "rgba(55,138,221,0.12)", color: "#378ADD", borderRadius: 999,
+                          }}>Latest</span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                        {h.reason && <span style={{ fontSize: 12, color: "#6b6340" }}>📝 {h.reason}</span>}
+                        <span style={{ fontSize: 12, color: "#b0a890" }}>🕐 {fmtDate(h.changed_at)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                    {h.reason && (
-                      <span style={{ fontSize: 12, color: "#64748b" }}>
-                        📝 {h.reason}
-                      </span>
-                    )}
-                    <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                      🕐 {fmtDate(h.changed_at)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
-    </Modal>
+      </ModalBox>
+    </Overlay>
   );
 }
 
@@ -410,88 +476,76 @@ function AnalyticsPanel({ rows, total }) {
 
   const totalShown = rows.length;
 
-  // Price buckets from loaded rows
   const buckets = [
-    { label: "< 50k",      min: 0,       max: 50000   },
-    { label: "50k–150k",   min: 50000,   max: 150000  },
-    { label: "150k–300k",  min: 150000,  max: 300000  },
-    { label: "300k–500k",  min: 300000,  max: 500000  },
-    { label: "> 500k",     min: 500000,  max: Infinity },
+    { label: "< 50k",     min: 0,       max: 50000   },
+    { label: "50k–150k",  min: 50000,   max: 150000  },
+    { label: "150k–300k", min: 150000,  max: 300000  },
+    { label: "300k–500k", min: 300000,  max: 500000  },
+    { label: "> 500k",    min: 500000,  max: Infinity },
   ];
   const bucketCounts = buckets.map((b) =>
-    rows.filter((p) => {
-      const v = Number(p.price);
-      return v >= b.min && v < b.max;
-    }).length
+    rows.filter((p) => { const v = Number(p.price); return v >= b.min && v < b.max; }).length
   );
   const maxBucket = Math.max(...bucketCounts, 1);
 
-  // Top 5 by view_count
   const topViewed = [...rows]
     .filter((p) => p.view_count != null)
     .sort((a, b) => Number(b.view_count) - Number(a.view_count))
     .slice(0, 5);
 
-  // Status colors for ratio bar
   const statusColors = {
-    AVAILABLE: "#22c55e",
-    SOLD:      "#ef4444",
-    RENTED:    "#3b82f6",
-    PENDING:   "#f59e0b",
-    INACTIVE:  "#94a3b8",
+    AVAILABLE: "#1D9E75",
+    SOLD:      "#D85A30",
+    RENTED:    "#378ADD",
+    PENDING:   "#c9b87a",
+    INACTIVE:  "#888780",
   };
 
-  const statCard = (label, value, sub, accent) => (
+  const statCard = (label, value, sub, color) => (
     <div style={{
-      background: "#fff", borderRadius: 12,
-      border: "1px solid #e8edf4", padding: "16px 18px",
-      flex: "1 1 140px", minWidth: 120,
+      background: "#fff",
+      border: "1px solid rgba(138,125,94,0.15)",
+      borderRadius: 12,
+      padding: "14px 18px",
+      flex: "1 1 130px", minWidth: 110,
     }}>
-      <p style={{ fontSize: 11, fontWeight: 500, color: "#94a3b8",
-        textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-        {label}
-      </p>
-      <p style={{ fontSize: 26, fontWeight: 700, color: accent || "#0f172a",
-        margin: "0 0 2px", letterSpacing: "-0.03em" }}>
-        {value}
-      </p>
-      {sub && <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>{sub}</p>}
+      <p style={{ fontSize: 10, fontWeight: 600, color: "#b0a890", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 6px" }}>{label}</p>
+      <p style={{ fontSize: 26, fontWeight: 700, color: color || "#1a1714", margin: "0 0 2px", letterSpacing: "-0.04em", fontFamily: "'Cormorant Garamond', serif" }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: "#b0a890", margin: 0 }}>{sub}</p>}
     </div>
   );
 
   return (
     <div style={{
-      background: "#f8fafc", borderRadius: 14,
-      border: "1px solid #e8edf4", padding: "20px 22px",
+      background: "linear-gradient(160deg, #141210 0%, #1e1a14 100%)",
+      borderRadius: 14,
+      border: "1px solid rgba(201,184,122,0.12)",
+      padding: "20px 22px",
       marginBottom: 22,
+      position: "relative",
+      overflow: "hidden",
     }}>
-      <p style={{
-        fontSize: 13, fontWeight: 600, color: "#374151",
-        margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8,
-      }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.015) 1px,transparent 1px)", backgroundSize: "22px 22px", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)" }} />
+
+      <p style={{ fontSize: 12, fontWeight: 600, color: "#c9b87a", margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8, position: "relative", textTransform: "uppercase", letterSpacing: "0.8px" }}>
         📊 Analytics Dashboard
-        <span style={{ fontSize: 11, fontWeight: 400, color: "#94a3b8" }}>
-          (based on current page / filter)
-        </span>
+        <span style={{ fontSize: 10, fontWeight: 400, color: "rgba(245,240,232,0.3)" }}>(based on current page / filter)</span>
       </p>
 
-      {/* Stat cards */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18, position: "relative" }}>
         {statCard("Total shown", totalShown, `of ${total} total`)}
-        {statCard("Available", counts.AVAILABLE, "active listings", "#22c55e")}
-        {statCard("Sold", counts.SOLD, "completed", "#ef4444")}
-        {statCard("Rented", counts.RENTED, "occupied", "#3b82f6")}
-        {statCard("Pending", counts.PENDING, "in progress", "#f59e0b")}
-        {statCard("Inactive", counts.INACTIVE, "hidden", "#94a3b8")}
+        {statCard("Available", counts.AVAILABLE, "active listings", "#1D9E75")}
+        {statCard("Sold", counts.SOLD, "completed", "#D85A30")}
+        {statCard("Rented", counts.RENTED, "occupied", "#378ADD")}
+        {statCard("Pending", counts.PENDING, "in progress", "#c9b87a")}
+        {statCard("Inactive", counts.INACTIVE, "hidden", "#888780")}
       </div>
 
-      {/* Sold vs Active ratio bar */}
       {totalShown > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <p style={{ fontSize: 12, color: "#64748b", marginBottom: 6, fontWeight: 500 }}>
-            Status distribution
-          </p>
-          <div style={{ display: "flex", height: 10, borderRadius: 999, overflow: "hidden", gap: 1 }}>
+        <div style={{ marginBottom: 18, position: "relative" }}>
+          <p style={{ fontSize: 11, color: "rgba(245,240,232,0.4)", marginBottom: 8, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.6px" }}>Status distribution</p>
+          <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", gap: 1 }}>
             {ALL_STATUSES.map((s) => {
               const pct = totalShown > 0 ? (counts[s] / totalShown) * 100 : 0;
               return pct > 0 ? (
@@ -500,10 +554,10 @@ function AnalyticsPanel({ rows, total }) {
               ) : null;
             })}
           </div>
-          <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
             {ALL_STATUSES.map((s) => (
-              <span key={s} style={{ fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColors[s], display: "inline-block" }} />
+              <span key={s} style={{ fontSize: 11, color: "rgba(245,240,232,0.4)", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColors[s], display: "inline-block" }} />
                 {s} ({counts[s]})
               </span>
             ))}
@@ -511,65 +565,41 @@ function AnalyticsPanel({ rows, total }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Price distribution bar chart */}
-        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e8edf4", padding: "14px 16px" }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", margin: "0 0 12px" }}>
-            Price distribution (current page)
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, position: "relative" }}>
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(138,125,94,0.12)", padding: "14px 16px" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#8a7d5e", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.6px" }}>Price distribution</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {buckets.map((b, i) => {
               const pct = Math.round((bucketCounts[i] / maxBucket) * 100);
               return (
                 <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 11, color: "#94a3b8", width: 68, flexShrink: 0, textAlign: "right" }}>
-                    {b.label}
-                  </span>
-                  <div style={{ flex: 1, height: 14, background: "#f1f5f9", borderRadius: 999, overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", borderRadius: 999,
-                      width: `${pct}%`, background: "#6366f1",
-                      transition: "width .5s ease",
-                    }} />
+                  <span style={{ fontSize: 10.5, color: "#b0a890", width: 68, flexShrink: 0, textAlign: "right" }}>{b.label}</span>
+                  <div style={{ flex: 1, height: 12, background: "rgba(138,125,94,0.08)", borderRadius: 999, overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: "linear-gradient(90deg,#8a7d5e,#c9b87a)", transition: "width .5s ease" }} />
                   </div>
-                  <span style={{ fontSize: 11, color: "#374151", fontWeight: 500, width: 18, textAlign: "right" }}>
-                    {bucketCounts[i]}
-                  </span>
+                  <span style={{ fontSize: 11, color: "#1a1714", fontWeight: 500, width: 18, textAlign: "right" }}>{bucketCounts[i]}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Most viewed */}
-        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e8edf4", padding: "14px 16px" }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", margin: "0 0 12px" }}>
-            Most viewed (current page)
-          </p>
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(138,125,94,0.12)", padding: "14px 16px" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#8a7d5e", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.6px" }}>Most viewed</p>
           {topViewed.length === 0 ? (
-            <p style={{ fontSize: 12, color: "#94a3b8" }}>No data</p>
+            <p style={{ fontSize: 12, color: "#b0a890" }}>No data</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {topViewed.map((p, i) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{
                     width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
-                    background: i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : "#cd7c2f",
+                    background: i === 0 ? "#c9b87a" : i === 1 ? "#888780" : "#8a6d4e",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 10, fontWeight: 700, color: "#fff",
-                  }}>
-                    {i + 1}
-                  </span>
-                  <span style={{
-                    fontSize: 12, color: "#374151", flex: 1,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }} title={p.title}>
-                    {p.title}
-                  </span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, color: "#6366f1",
-                    background: "#eef2ff", padding: "2px 6px", borderRadius: 20,
-                  }}>
+                    fontSize: 9.5, fontWeight: 700, color: "#1a1714",
+                  }}>{i + 1}</span>
+                  <span style={{ fontSize: 12, color: "#4a4438", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.title}>{p.title}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#8a7d5e", background: "rgba(138,125,94,0.1)", border: "1px solid rgba(138,125,94,0.15)", padding: "2px 7px", borderRadius: 999 }}>
                     {p.view_count} 👁
                   </span>
                 </div>
@@ -590,122 +620,59 @@ function FilterPanel({ filters, onChange, onClear, onApply }) {
 
   return (
     <div style={{
-      background: "#fff", borderRadius: 12,
-      border: "1px solid #e8edf4", padding: "16px 20px",
+      background: "linear-gradient(135deg, #1a1714 0%, #201c18 100%)",
+      borderRadius: 12,
+      border: "1px solid rgba(201,184,122,0.12)",
+      padding: "18px 20px",
       marginBottom: 18,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: 0 }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "#c9b87a", margin: 0, textTransform: "uppercase", letterSpacing: "0.8px" }}>
           🔍 Advanced Filters
         </p>
         {hasAny && (
           <button onClick={onClear} style={{
-            fontSize: 12, padding: "4px 10px", borderRadius: 6,
-            border: "1px solid #e8edf4", background: "transparent",
-            color: "#94a3b8", cursor: "pointer",
-          }}>
-            Clear all ×
-          </button>
+            fontSize: 11.5, padding: "4px 11px", borderRadius: 7,
+            border: "1px solid rgba(201,184,122,0.2)", background: "transparent",
+            color: "rgba(245,240,232,0.4)", cursor: "pointer",
+          }}>Clear all ×</button>
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 10 }}>
+        {[
+          { label: "Status", key: "status", opts: ALL_STATUSES },
+          { label: "Type", key: "type", opts: ALL_TYPES },
+          { label: "Listing type", key: "listingType", opts: ALL_LISTINGS },
+        ].map(({ label, key, opts }) => (
+          <div key={key}>
+            <label style={darkFieldLabel}>{label}</label>
+            <select value={filters[key]} onChange={(e) => set(key, e.target.value)} style={darkSelectSt}>
+              <option value="">All</option>
+              {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+        ))}
 
-        {/* Status */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Status
-          </label>
-          <select value={filters.status} onChange={(e) => set("status", e.target.value)}
-            style={selectStyle}>
-            <option value="">All</option>
-            {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <label style={darkFieldLabel}>Agent ID</label>
+          <input type="number" placeholder="ex: 5" value={filters.agentId} onChange={(e) => set("agentId", e.target.value)} style={darkInputSt} />
         </div>
-
-        {/* Type */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Type
-          </label>
-          <select value={filters.type} onChange={(e) => set("type", e.target.value)}
-            style={selectStyle}>
-            <option value="">All</option>
-            {ALL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <label style={darkFieldLabel}>Price min (€)</label>
+          <input type="number" placeholder="ex: 50000" value={filters.minPrice} onChange={(e) => set("minPrice", e.target.value)} style={darkInputSt} />
         </div>
-
-        {/* Listing */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Listing type
-          </label>
-          <select value={filters.listingType} onChange={(e) => set("listingType", e.target.value)}
-            style={selectStyle}>
-            <option value="">All</option>
-            {ALL_LISTINGS.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
+          <label style={darkFieldLabel}>Price max (€)</label>
+          <input type="number" placeholder="ex: 500000" value={filters.maxPrice} onChange={(e) => set("maxPrice", e.target.value)} style={darkInputSt} />
         </div>
-
-        {/* Agent ID */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Agent ID
-          </label>
-          <input
-            type="number" placeholder="ex: 5"
-            value={filters.agentId}
-            onChange={(e) => set("agentId", e.target.value)}
-            style={inputStyle}
-          />
+          <label style={darkFieldLabel}>City</label>
+          <input type="text" placeholder="ex: Tirana" value={filters.city} onChange={(e) => set("city", e.target.value)} style={darkInputSt} />
         </div>
-
-        {/* Min price */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Price min (€)
-          </label>
-          <input
-            type="number" placeholder="ex: 50000"
-            value={filters.minPrice}
-            onChange={(e) => set("minPrice", e.target.value)}
-            style={inputStyle}
-          />
-        </div>
-
-        {/* Max price */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Price max (€)
-          </label>
-          <input
-            type="number" placeholder="ex: 500000"
-            value={filters.maxPrice}
-            onChange={(e) => set("maxPrice", e.target.value)}
-            style={inputStyle}
-          />
-        </div>
-
-        {/* City */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            City
-          </label>
-          <input
-            type="text" placeholder="ex: Tirana"
-            value={filters.city}
-            onChange={(e) => set("city", e.target.value)}
-            style={inputStyle}
-          />
-        </div>
-
-        {/* Featured */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "#374151", display: "block", marginBottom: 5 }}>
-            Featured
-          </label>
-          <select value={filters.isFeatured} onChange={(e) => set("isFeatured", e.target.value)}
-            style={selectStyle}>
+          <label style={darkFieldLabel}>Featured</label>
+          <select value={filters.isFeatured} onChange={(e) => set("isFeatured", e.target.value)} style={darkSelectSt}>
             <option value="">All</option>
             <option value="true">Yes</option>
             <option value="false">No</option>
@@ -714,39 +681,79 @@ function FilterPanel({ filters, onChange, onClear, onApply }) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-        <button onClick={onApply} className="btn btn--primary btn--sm">
-          Apply filters
-        </button>
+        <button onClick={onApply} style={primaryBtn}>Apply filters</button>
       </div>
     </div>
   );
 }
 
-const selectStyle = {
-  width: "100%", padding: "8px 10px", fontSize: 13,
-  border: "1px solid #d1d5db", borderRadius: 8,
-  background: "#fff", color: "#0f172a", outline: "none", cursor: "pointer",
+// ─── Shared button / input styles ─────────────────────────────────────────────
+
+const primaryBtn = {
+  padding: "9px 18px", borderRadius: 10, border: "none",
+  background: "linear-gradient(135deg,#c9b87a 0%,#b0983e 100%)",
+  color: "#1a1714", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  fontFamily: "'DM Sans', sans-serif",
 };
-const inputStyle = {
+const secondaryBtn = {
+  padding: "9px 16px", borderRadius: 10,
+  border: "1.5px solid rgba(138,125,94,0.25)", background: "transparent",
+  color: "#6b6248", fontSize: 13, fontWeight: 500, cursor: "pointer",
+  fontFamily: "'DM Sans', sans-serif",
+};
+const dangerBtn = {
+  padding: "9px 18px", borderRadius: 10, border: "none",
+  background: "#D85A30", color: "#fff",
+  fontSize: 13, fontWeight: 700, cursor: "pointer",
+  fontFamily: "'DM Sans', sans-serif",
+};
+const fieldLabel = {
+  fontSize: 11, fontWeight: 600, color: "#8a7d5e",
+  display: "block", marginBottom: 6,
+  textTransform: "uppercase", letterSpacing: "0.5px",
+};
+const darkFieldLabel = {
+  fontSize: 10.5, fontWeight: 600, color: "rgba(245,240,232,0.38)",
+  display: "block", marginBottom: 6,
+  textTransform: "uppercase", letterSpacing: "0.5px",
+};
+const selectSt = {
   width: "100%", padding: "8px 10px", fontSize: 13,
-  border: "1px solid #d1d5db", borderRadius: 8,
-  background: "#fff", color: "#0f172a", outline: "none",
-  boxSizing: "border-box",
+  border: "1.5px solid rgba(138,125,94,0.25)", borderRadius: 9,
+  background: "#fff", color: "#1a1714", outline: "none", cursor: "pointer",
+  fontFamily: "'DM Sans', sans-serif",
+};
+const darkSelectSt = {
+  width: "100%", padding: "8px 10px", fontSize: 13,
+  border: "1px solid rgba(245,240,232,0.1)", borderRadius: 9,
+  background: "rgba(245,240,232,0.06)", color: "#f5f0e8",
+  outline: "none", cursor: "pointer",
+  fontFamily: "'DM Sans', sans-serif",
+};
+const darkInputSt = {
+  width: "100%", padding: "8px 10px", fontSize: 13,
+  border: "1px solid rgba(245,240,232,0.1)", borderRadius: 9,
+  background: "rgba(245,240,232,0.06)", color: "#f5f0e8",
+  outline: "none", boxSizing: "border-box",
+  fontFamily: "'DM Sans', sans-serif",
 };
 
-// ─── Shared table cell styles ─────────────────────────────────────────────────
+// ─── Table cell styles ────────────────────────────────────────────────────────
 
 const TH = {
   padding: "10px 10px", textAlign: "left",
-  fontWeight: 500, fontSize: 12, color: "var(--color-text-secondary)",
-  borderBottom: "0.5px solid var(--color-border-tertiary)",
-  background: "var(--color-background-secondary)",
+  fontWeight: 600, fontSize: 10.5,
+  color: "#8a7d5e",
+  borderBottom: "1px solid rgba(138,125,94,0.15)",
+  background: "rgba(138,125,94,0.04)",
   whiteSpace: "nowrap", overflow: "hidden", userSelect: "none",
+  textTransform: "uppercase", letterSpacing: "0.5px",
 };
 const TD = {
   padding: "10px 10px",
-  borderBottom: "0.5px solid var(--color-border-tertiary)",
+  borderBottom: "1px solid rgba(138,125,94,0.08)",
   fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+  color: "#1a1714",
 };
 
 // ─── Main content ─────────────────────────────────────────────────────────────
@@ -767,17 +774,14 @@ function AllPropertiesContent() {
     } catch { return null; }
   })();
 
-  // ── Table state ────────────────────────────────────────────────
   const [rows, setRows]       = useState([]);
   const [total, setTotal]     = useState(0);
   const [page, setPage]       = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
 
-  // ── Search ─────────────────────────────────────────────────────
   const [search, setSearch]   = useState("");
 
-  // ── Advanced filters ───────────────────────────────────────────
   const EMPTY_FILTERS = {
     status: "", type: "", listingType: "",
     agentId: "", minPrice: "", maxPrice: "",
@@ -788,19 +792,16 @@ function AllPropertiesContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(true);
 
-  // ── Sort ───────────────────────────────────────────────────────
   const [sortField, setSortField] = useState("createdAt");
   const [sortAsc, setSortAsc]     = useState(false);
 
-  // ── Modals ─────────────────────────────────────────────────────
   const [deleteTarget,  setDeleteTarget]  = useState(null);
   const [deleting,      setDeleting]      = useState(false);
   const [deletedId,     setDeletedId]     = useState(null);
   const [statusTarget,  setStatusTarget]  = useState(null);
-  const [agentModal,    setAgentModal]    = useState(null); // agentId
-  const [historyTarget, setHistoryTarget] = useState(null); // { id, title }
+  const [agentModal,    setAgentModal]    = useState(null);
+  const [historyTarget, setHistoryTarget] = useState(null);
 
-  // ── Toast ──────────────────────────────────────────────────────
   const [toast, setToast] = useState(null);
   const notify = useCallback((msg, type = "success") =>
     setToast({ msg, type, key: Date.now() }), []);
@@ -808,27 +809,6 @@ function AllPropertiesContent() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasApplied = Object.values(appliedFilters).some((v) => v !== "" && v != null);
 
-  // ── Fetch ──────────────────────────────────────────────────────
-  //
-  // Search strategy (in order of priority):
-  //
-  //  1. Input is pure number or "#N"  →  parallel calls:
-  //       a) GET /api/properties/{id}         (exact property by ID)
-  //       b) GET /api/properties/agent/{id}   (all props of that agent)
-  //     Merge + deduplicate, show all matches.
-  //
-  //  2. Input is text  →  four parallel calls:
-  //       a) GET /api/properties/search?keyword=   (FTS: title/description/type)
-  //       a) FTS search (title/description/type, whole words)
-  //       b) filter?city= (LIKE match on address.city)
-  //       c) all props, client-side filter by title.includes (partial match)
-  //       d) filter?type= if keyword matches a type enum
-  //     Merge + deduplicate results.
-  //
-  //  3. No search, agent filter in panel  →  GET /api/properties/agent/{id}
-  //  4. No search, other filters          →  GET /api/properties/filter
-  //  5. No search, no filters             →  GET /api/properties  (paginated)
-  
   const handleCreate = async (data) => {
     setCreating(true);
     try {
@@ -842,29 +822,25 @@ function AllPropertiesContent() {
       setCreating(false);
     }
   };
-  
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const af     = appliedFilters;
+      const af = appliedFilters;
       const hasFilter = Object.values(af).some((v) => v !== "" && v != null);
-      const raw    = search.trim();
+      const raw = search.trim();
 
-      // normalise any API response shape into { rows, total }
       const normalise = (data) => ({
         rows:  data.content ?? (Array.isArray(data) ? data : [data].filter(Boolean)),
         total: data.totalElements ?? (Array.isArray(data) ? data.length : 1),
       });
 
-      // deduplicate array of property objects by id
       const dedup = (arr) => {
         const seen = new Set();
         return arr.filter((p) => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
       };
 
-      // map PropertyResponse (full object from /api/properties/{id})
-      // to the PropertySummaryResponse shape the table columns expect
       const toSummary = (d) => ({
         id:           d.id,
         title:        d.title,
@@ -888,107 +864,47 @@ function AllPropertiesContent() {
       if (raw) {
         const stripped = raw.startsWith("#") ? raw.slice(1) : raw;
         const asNum    = Number(stripped);
-        const isNum    = stripped !== "" && !isNaN(asNum) &&
-                         Number.isInteger(asNum) && asNum > 0;
+        const isNum    = stripped !== "" && !isNaN(asNum) && Number.isInteger(asNum) && asNum > 0;
 
         if (isNum) {
-          // ── numeric: try property ID AND agent ID in parallel ────────
           const [byId, byAgent] = await Promise.allSettled([
             api.get(`/api/properties/${asNum}`),
-            api.get(`/api/properties/agent/${asNum}`, {
-              params: { page, size: PAGE_SIZE },
-            }),
+            api.get(`/api/properties/agent/${asNum}`, { params: { page, size: PAGE_SIZE } }),
           ]);
-
           const merged = [];
-
           if (byId.status === "fulfilled") {
             const d = byId.value.data;
-            // single PropertyResponse object (has no .content)
             if (d && d.id && !d.content) merged.push(toSummary(d));
           }
-
           if (byAgent.status === "fulfilled") {
             const { rows: agentRows } = normalise(byAgent.value.data);
             merged.push(...agentRows);
           }
-
           const final = dedup(merged);
-          setRows(final);
-          setTotal(final.length);
-
+          setRows(final); setTotal(final.length);
         } else {
-          // ── text search strategy ─────────────────────────────────────
-          //
-          // The backend FTS index (search_vector) uses to_tsvector('english',...)
-          // which stems words and requires whole words — "Vila" won't match "Villa"
-          // and short/partial words may not match at all.
-          //
-          // So we fire FOUR parallel requests and merge:
-          //   a) /search?keyword=   → FTS on title+description+type (whole words)
-          //   b) /filter?city=      → LIKE %keyword% on address.city
-          //   c) /filter?type=      → if keyword matches an enum value exactly
-          //   d) GET all + client-side title filter → LIKE fallback for partial title
-          //      (we fetch page 0 size 100 and filter by title.includes(keyword))
-
           const kw      = stripped;
           const kwLower = kw.toLowerCase();
-
-          // Check if keyword matches a known property type enum
-          const matchedType = ALL_TYPES.find(
-            (t) => t.toLowerCase() === kwLower || t.toLowerCase().includes(kwLower)
-          );
-
+          const matchedType = ALL_TYPES.find((t) => t.toLowerCase() === kwLower || t.toLowerCase().includes(kwLower));
           const requests = [
-            // a) FTS search
-            api.get("/api/properties/search", {
-              params: { keyword: kw, page: 0, size: 50 },
-            }),
-            // b) city filter (LIKE %kw%)
-            api.get("/api/properties/filter", {
-              params: { city: kw, page: 0, size: 50 },
-            }),
-            // c) all props page 0 for client-side title filter (partial match)
-            api.get("/api/properties", {
-              params: { page: 0, size: 100, sortBy: "createdAt", sortDir: "desc" },
-            }),
+            api.get("/api/properties/search", { params: { keyword: kw, page: 0, size: 50 } }),
+            api.get("/api/properties/filter",  { params: { city: kw, page: 0, size: 50 } }),
+            api.get("/api/properties",          { params: { page: 0, size: 100, sortBy: "createdAt", sortDir: "desc" } }),
           ];
-
-          // d) type filter if keyword looks like a type
-          if (matchedType) {
-            requests.push(
-              api.get("/api/properties/filter", {
-                params: { type: matchedType, page: 0, size: 50 },
-              })
-            );
-          }
+          if (matchedType) requests.push(api.get("/api/properties/filter", { params: { type: matchedType, page: 0, size: 50 } }));
 
           const settled = await Promise.allSettled(requests);
-
-          const ftsRows  = settled[0].status === "fulfilled"
-            ? normalise(settled[0].value.data).rows : [];
-          const cityRows = settled[1].status === "fulfilled"
-            ? normalise(settled[1].value.data).rows : [];
-          const allRows  = settled[2].status === "fulfilled"
-            ? normalise(settled[2].value.data).rows : [];
-          const typeRows = (settled[3] && settled[3].status === "fulfilled")
-            ? normalise(settled[3].value.data).rows : [];
-
-          // Client-side title filter: include any property whose title
-          // contains the search keyword (case-insensitive, partial match)
-          const titleMatches = allRows.filter((p) =>
-            p.title && p.title.toLowerCase().includes(kwLower)
-          );
-
+          const ftsRows  = settled[0].status === "fulfilled" ? normalise(settled[0].value.data).rows : [];
+          const cityRows = settled[1].status === "fulfilled" ? normalise(settled[1].value.data).rows : [];
+          const allRows  = settled[2].status === "fulfilled" ? normalise(settled[2].value.data).rows : [];
+          const typeRows = (settled[3] && settled[3].status === "fulfilled") ? normalise(settled[3].value.data).rows : [];
+          const titleMatches = allRows.filter((p) => p.title && p.title.toLowerCase().includes(kwLower));
           const merged = dedup([...ftsRows, ...cityRows, ...titleMatches, ...typeRows]);
-          setRows(merged);
-          setTotal(merged.length);
+          setRows(merged); setTotal(merged.length);
         }
 
       } else if (af.agentId) {
-        const res = await api.get(`/api/properties/agent/${af.agentId}`, {
-          params: { page, size: PAGE_SIZE },
-        });
+        const res = await api.get(`/api/properties/agent/${af.agentId}`, { params: { page, size: PAGE_SIZE } });
         const { rows: r, total: t } = normalise(res.data);
         setRows(r); setTotal(t);
 
@@ -1010,11 +926,7 @@ function AllPropertiesContent() {
 
       } else {
         const res = await api.get("/api/properties", {
-          params: {
-            page, size: PAGE_SIZE,
-            sortBy:  sortField,
-            sortDir: sortAsc ? "asc" : "desc",
-          },
+          params: { page, size: PAGE_SIZE, sortBy: sortField, sortDir: sortAsc ? "asc" : "desc" },
         });
         const { rows: r, total: t } = normalise(res.data);
         setRows(r); setTotal(t);
@@ -1036,8 +948,6 @@ function AllPropertiesContent() {
     else { setSortField(key); setSortAsc(true); }
   }
 
-  // ── Soft delete ────────────────────────────────────────────────
-
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -1053,107 +963,130 @@ function AllPropertiesContent() {
     }
   }
 
-  // ── Pagination button ──────────────────────────────────────────
-
   function PageBtn({ n }) {
     const active = n === page;
     return (
-      <button onClick={() => setPage(n)} style={{
-        fontSize: 13, padding: "4px 10px",
-        borderRadius: "var(--border-radius-md)",
-        border: "0.5px solid var(--color-border-secondary)",
-        background: active ? "var(--color-background-info)" : "transparent",
-        color: active ? "var(--color-text-info)" : "var(--color-text-primary)",
-        fontWeight: active ? 500 : 400, cursor: "pointer",
+      <button onClick={() => setPage(n)} className="ap-pg" style={{
+        fontSize: 13, padding: "5px 11px",
+        borderRadius: 9,
+        border: `1.5px solid ${active ? "#c9b87a" : "rgba(138,125,94,0.2)"}`,
+        background: active ? "#c9b87a" : "transparent",
+        color: active ? "#1a1714" : "#8a7d5e",
+        fontWeight: active ? 700 : 400, cursor: "pointer",
+        fontFamily: "'DM Sans', sans-serif",
       }}>{n + 1}</button>
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────
+  const activeFilterCount = Object.values(appliedFilters).filter((v) => v !== "" && v != null).length;
 
   return (
-    <div style={{ padding: "1.5rem 0" }}>
-      <style>{`@keyframes fadeUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none} }`}</style>
+    <div className="ap-wrap" style={{ padding: "1.5rem 0" }}>
+      <style>{CSS}</style>
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 140 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 500, margin: 0 }}>All properties</h1>
-          <p style={{ fontSize: 13, color: "#94a3b8", margin: "2px 0 0" }}>
-            Admin view — full control over all properties
-          </p>
+      {/* ── Hero Header ──────────────────────────────────────────── */}
+      <div style={{
+        background: "linear-gradient(160deg, #141210 0%, #1e1a14 45%, #241e16 100%)",
+        borderRadius: 16,
+        padding: "28px 28px 24px",
+        marginBottom: 22,
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.015) 1px,transparent 1px)", backgroundSize: "22px 22px", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)" }} />
+
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap", position: "relative" }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <h1 style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontSize: 28, fontWeight: 700,
+              color: "#f5f0e8", margin: "0 0 4px",
+              letterSpacing: "-0.4px",
+            }}>All Properties</h1>
+            <p style={{ fontSize: 13, color: "rgba(245,240,232,0.35)", margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
+              Admin view — full control over all properties
+            </p>
+          </div>
+
+          {/* Toggle buttons */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => setShowAnalytics((v) => !v)}
+              style={{
+                fontSize: 12, padding: "7px 14px", borderRadius: 9, cursor: "pointer",
+                border: `1px solid ${showAnalytics ? "rgba(201,184,122,0.4)" : "rgba(245,240,232,0.1)"}`,
+                background: showAnalytics ? "rgba(201,184,122,0.12)" : "transparent",
+                color: showAnalytics ? "#c9b87a" : "rgba(245,240,232,0.4)",
+                fontFamily: "'DM Sans', sans-serif", fontWeight: showAnalytics ? 600 : 400,
+              }}>
+              📊 Analytics
+            </button>
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              style={{
+                fontSize: 12, padding: "7px 14px", borderRadius: 9, cursor: "pointer",
+                border: `1px solid ${activeFilterCount > 0 ? "rgba(201,184,122,0.5)" : "rgba(245,240,232,0.1)"}`,
+                background: activeFilterCount > 0 ? "rgba(201,184,122,0.12)" : showFilters ? "rgba(245,240,232,0.05)" : "transparent",
+                color: activeFilterCount > 0 ? "#c9b87a" : "rgba(245,240,232,0.4)",
+                fontFamily: "'DM Sans', sans-serif", fontWeight: activeFilterCount > 0 ? 600 : 400,
+              }}>
+              🔍 Filters {activeFilterCount > 0 ? `● ${activeFilterCount}` : ""}
+            </button>
+
+            <button
+              onClick={() => setCreateOpen(true)}
+              style={primaryBtn}>
+              + Add Property
+            </button>
+          </div>
         </div>
-        <button
-            className="btn btn--primary"
-            onClick={() => setCreateOpen(true)}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <span style={{ fontSize: 16 }}>+</span> Add Property
-          </button>
 
-        {/* Toggle buttons */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setShowAnalytics((v) => !v)}
-            style={{
-              fontSize: 12, padding: "6px 12px",
-              borderRadius: "var(--border-radius-md)",
-              border: "0.5px solid var(--color-border-secondary)",
-              background: showAnalytics ? "var(--color-background-info)" : "transparent",
-              color: showAnalytics ? "var(--color-text-info)" : "var(--color-text-secondary)",
-              cursor: "pointer",
-            }}
-          >
-            📊 Analytics
-          </button>
-          <button
-            onClick={() => setShowFilters((v) => !v)}
-            style={{
-              fontSize: 12, padding: "6px 12px",
-              borderRadius: "var(--border-radius-md)",
-              border: `0.5px solid ${hasApplied ? "#6366f1" : "var(--color-border-secondary)"}`,
-              background: hasApplied ? "#eef2ff" : showFilters ? "var(--color-background-secondary)" : "transparent",
-              color: hasApplied ? "#6366f1" : "var(--color-text-secondary)",
-              cursor: "pointer", fontWeight: hasApplied ? 500 : 400,
-            }}
-          >
-            🔍 Filters {hasApplied ? "●" : ""}
-          </button>
-        </div>
-
-        {/* Search */}
+        {/* Search bar */}
         <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          background: "var(--color-background-secondary)",
-          border: "0.5px solid var(--color-border-secondary)",
-          borderRadius: "var(--border-radius-md)",
-          padding: "6px 12px", flex: 1, maxWidth: 380, minWidth: 200,
+          display: "flex", alignItems: "center", gap: 0,
+          marginTop: 18,
+          background: "rgba(245,240,232,0.06)",
+          border: "1.5px solid rgba(245,240,232,0.09)",
+          borderRadius: 12, overflow: "hidden",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
         }}>
-          <svg width={15} height={15} viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth={2}
-            style={{ flexShrink: 0, color: "var(--color-text-secondary)" }}>
-            <circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title, city, agent ID or #property-ID…"
-            style={{
-              border: "none", background: "transparent", outline: "none",
-              fontSize: 14, width: "100%", color: "var(--color-text-primary)",
-            }}
-          />
-          {search && (
-            <button onClick={() => setSearch("")} style={{
-              border: "none", background: "transparent", cursor: "pointer",
-              fontSize: 18, lineHeight: 1, padding: 0, color: "var(--color-text-secondary)",
-            }}>×</button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, padding: "0 16px" }}>
+            <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="rgba(245,240,232,0.3)" strokeWidth={2} style={{ flexShrink: 0 }}>
+              <circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by title, city, agent ID or #property-ID…"
+              style={{
+                border: "none", background: "transparent", outline: "none",
+                fontSize: 13.5, width: "100%", color: "#f5f0e8", height: 46,
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{
+                border: "none", background: "transparent", cursor: "pointer",
+                fontSize: 18, lineHeight: 1, padding: 0, color: "rgba(245,240,232,0.3)",
+              }}>×</button>
+            )}
+          </div>
+          <button style={{
+            padding: "0 24px", height: 46, cursor: "pointer",
+            background: "linear-gradient(135deg,#c9b87a 0%,#b0983e 100%)",
+            color: "#1a1714", border: "none",
+            fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans', sans-serif",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            🔍 Search
+          </button>
         </div>
       </div>
 
-      {/* ── Analytics ────────────────────────────────────────────── */}
+      {/* ── Analytics ─────────────────────────────────────────────── */}
       {showAnalytics && <AnalyticsPanel rows={rows} total={total} />}
 
-      {/* ── Filter panel ─────────────────────────────────────────── */}
+      {/* ── Filter panel ──────────────────────────────────────────── */}
       {showFilters && (
         <FilterPanel
           filters={filters}
@@ -1163,153 +1096,153 @@ function AllPropertiesContent() {
         />
       )}
 
-      {/* ── Error ────────────────────────────────────────────────── */}
+      {/* ── Error ─────────────────────────────────────────────────── */}
       {error && (
         <div style={{
-          background: "#FCEBEB", color: "#A32D2D", fontSize: 13,
-          padding: "10px 14px", marginBottom: "1rem",
-          borderRadius: "var(--border-radius-md)", border: "0.5px solid #F7C1C1",
+          background: "rgba(216,90,48,0.08)", color: "#D85A30", fontSize: 13,
+          padding: "10px 16px", marginBottom: "1rem",
+          borderRadius: 10, border: "1px solid rgba(216,90,48,0.2)",
         }}>{error}</div>
       )}
 
-      {/* ── Table ────────────────────────────────────────────────── */}
+      {/* ── Table card wrapper ─────────────────────────────────────── */}
       <div style={{
-        overflowX: "auto",
-        border: "0.5px solid var(--color-border-tertiary)",
-        borderRadius: "var(--border-radius-lg)", width: "100%",
+        background: "#fff",
+        border: "1px solid rgba(138,125,94,0.15)",
+        borderRadius: 14,
+        overflow: "hidden",
+        boxShadow: "0 2px 20px rgba(20,16,10,0.06)",
       }}>
-        <table style={{ width: "100%", minWidth: TABLE_MIN_WIDTH, borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <colgroup>
-            {COLUMNS.map((c) => <col key={c.label} style={{ width: c.width }} />)}
-          </colgroup>
-          <thead>
-            <tr>
-              {COLUMNS.map((c) => (
-                <th key={c.label}
-                  style={{ ...TH, cursor: c.sortKey ? "pointer" : "default" }}
-                  onClick={() => handleSort(c.sortKey)}>
-                  {c.label}
-                  {c.sortKey && <SortArrow active={sortField === c.sortKey} asc={sortAsc} />}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={COLUMNS.length} style={{ ...TD, textAlign: "center", padding: "2.5rem", color: "var(--color-text-secondary)" }}>
-                Loading…
-              </td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={COLUMNS.length} style={{ ...TD, textAlign: "center", padding: "2.5rem", color: "var(--color-text-secondary)" }}>
-                No properties found
-              </td></tr>
-            ) : rows.map((p) => {
-              const isDeleted = p.id === deletedId;
-              return (
-                <tr key={p.id}
-                  style={{ opacity: isDeleted ? 0.3 : 1, transition: "opacity 0.5s" }}
-                  onMouseEnter={(e) => { if (!isDeleted) Array.from(e.currentTarget.cells).forEach((c) => (c.style.background = "var(--color-background-secondary)")); }}
-                  onMouseLeave={(e) => { Array.from(e.currentTarget.cells).forEach((c) => (c.style.background = "")); }}
-                >
-                  <td style={{ ...TD, fontFamily: "monospace", fontSize: 12, color: "var(--color-text-secondary)" }}>
-                    #{p.id}
-                  </td>
-                  <td style={TD} title={p.title ?? ""}>{p.title ?? "—"}</td>
-                  <td style={TD}>
-                    {p.agent_id != null ? (
-                      <button
-                        onClick={() => setAgentModal(p.agent_id)}
-                        title="View agent's properties"
-                        style={{
-                          fontSize: 12, padding: "3px 8px",
-                          borderRadius: 20, border: "1px solid #c7d7fe",
-                          background: "#eef2ff", color: "#6366f1",
-                          cursor: "pointer", fontWeight: 500,
-                        }}
-                      >
-                        #{p.agent_id}
-                      </button>
-                    ) : "—"}
-                  </td>
-                  <td style={{ ...TD, fontWeight: 500 }}>{fmtPrice(p.price, p.currency)}</td>
-                  <td style={TD}><Badge status={p.status} /></td>
-                  <td style={{ ...TD, color: "var(--color-text-secondary)" }}>{p.type ?? "—"}</td>
-                  <td style={{ ...TD, color: "var(--color-text-secondary)" }}>{p.listing_type ?? "—"}</td>
-                  <td style={TD}><SchemaTag name={tenantSchema} /></td>
-                  <td style={{ ...TD, color: "var(--color-text-secondary)" }}>{fmtDate(p.created_at)}</td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", minWidth: TABLE_MIN_WIDTH, borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              {COLUMNS.map((c) => <col key={c.label} style={{ width: c.width }} />)}
+            </colgroup>
+            <thead>
+              <tr>
+                {COLUMNS.map((c) => (
+                  <th key={c.label}
+                    className={c.sortKey ? "ap-th-sort" : ""}
+                    style={{ ...TH, cursor: c.sortKey ? "pointer" : "default" }}
+                    onClick={() => handleSort(c.sortKey)}>
+                    {c.label}
+                    {c.sortKey && <SortArrow active={sortField === c.sortKey} asc={sortAsc} />}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={COLUMNS.length} style={{ ...TD, textAlign: "center", padding: "3rem", color: "#8a7d5e" }}>
+                  <div style={{ width: 24, height: 24, margin: "0 auto 10px", border: "2px solid rgba(138,125,94,0.15)", borderTop: "2px solid #8a7d5e", borderRadius: "50%", animation: "ap-spin .8s linear infinite" }} />
+                  <p style={{ margin: 0, fontSize: 13 }}>Loading…</p>
+                </td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={COLUMNS.length} style={{ ...TD, textAlign: "center", padding: "3rem", color: "#b0a890" }}>
+                  <div style={{ fontSize: 32, marginBottom: 10 }}>🏘️</div>
+                  <p style={{ margin: 0, fontSize: 14 }}>No properties found</p>
+                </td></tr>
+              ) : rows.map((p) => {
+                const isDeleted = p.id === deletedId;
+                return (
+                  <tr key={p.id} className="ap-row"
+                    style={{ opacity: isDeleted ? 0.2 : 1 }}
+                  >
+                    <td style={{ ...TD, fontFamily: "monospace", fontSize: 11.5, color: "#b0a890" }}>
+                      #{p.id}
+                    </td>
+                    <td style={{ ...TD, fontWeight: 500, color: "#1a1714" }} title={p.title ?? ""}>
+                      {p.title ?? "—"}
+                    </td>
+                    <td style={TD}>
+                      {p.agent_id != null ? (
+                        <button
+                          onClick={() => setAgentModal(p.agent_id)}
+                          title="View agent's properties"
+                          style={{
+                            fontSize: 11.5, padding: "3px 10px",
+                            borderRadius: 999,
+                            border: "1px solid rgba(201,184,122,0.25)",
+                            background: "rgba(201,184,122,0.08)",
+                            color: "#c9b87a",
+                            cursor: "pointer", fontWeight: 600,
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}>
+                          #{p.agent_id}
+                        </button>
+                      ) : "—"}
+                    </td>
+                    <td style={{ ...TD, fontWeight: 600 }}>{fmtPrice(p.price, p.currency)}</td>
+                    <td style={TD}><Badge status={p.status} /></td>
+                    <td style={{ ...TD, color: "#8a7d5e" }}>{p.type ?? "—"}</td>
+                    <td style={{ ...TD, color: "#8a7d5e" }}>{p.listing_type ?? "—"}</td>
+                    <td style={TD}><SchemaTag name={tenantSchema} /></td>
+                    <td style={{ ...TD, color: "#b0a890" }}>{fmtDate(p.created_at)}</td>
 
-                  {/* Actions — View removed, only admin actions */}
-                  <td style={TD}>
-                    <div style={{ display: "flex", gap: 5, flexWrap: "nowrap" }}>
+                    <td style={TD}>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "nowrap" }}>
+                        <button className="ap-btn-action"
+                          onClick={() => setStatusTarget(p)}
+                          title="Change status (admin override)"
+                          style={{
+                            fontSize: 11, padding: "4px 9px", borderRadius: 8,
+                            border: "1px solid rgba(29,158,117,0.3)",
+                            background: "rgba(29,158,117,0.06)", cursor: "pointer",
+                            color: "#1D9E75", whiteSpace: "nowrap",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}>
+                          Status
+                        </button>
 
-                      {/* Status override */}
-                      <button
-                        onClick={() => setStatusTarget(p)}
-                        title="Change status (admin override)"
-                        style={{
-                          fontSize: 11, padding: "4px 8px",
-                          borderRadius: "var(--border-radius-md)",
-                          border: "0.5px solid #a7f3d0",
-                          background: "transparent", cursor: "pointer",
-                          color: "#047857", whiteSpace: "nowrap",
-                        }}
-                      >
-                        Status
-                      </button>
+                        <button className="ap-btn-action"
+                          onClick={() => setHistoryTarget({ id: p.id, title: p.title })}
+                          title="View price history"
+                          style={{
+                            fontSize: 11, padding: "4px 9px", borderRadius: 8,
+                            border: "1px solid rgba(55,138,221,0.25)",
+                            background: "rgba(55,138,221,0.06)", cursor: "pointer",
+                            color: "#378ADD", whiteSpace: "nowrap",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}>
+                          History
+                        </button>
 
-                      {/* Price history */}
-                      <button
-                        onClick={() => setHistoryTarget({ id: p.id, title: p.title })}
-                        title="View price history"
-                        style={{
-                          fontSize: 11, padding: "4px 8px",
-                          borderRadius: "var(--border-radius-md)",
-                          border: "0.5px solid #bfdbfe",
-                          background: "transparent", cursor: "pointer",
-                          color: "#1d4ed8", whiteSpace: "nowrap",
-                        }}
-                      >
-                        History
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        disabled={isDeleted}
-                        onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
-                        title="Soft delete"
-                        style={{
-                          fontSize: 11, padding: "4px 8px",
-                          borderRadius: "var(--border-radius-md)",
-                          border: "0.5px solid #F09595",
-                          background: "transparent",
-                          cursor: isDeleted ? "default" : "pointer",
-                          color: "#A32D2D", whiteSpace: "nowrap",
-                          opacity: isDeleted ? 0.4 : 1,
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                        <button className="ap-btn-action"
+                          disabled={isDeleted}
+                          onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
+                          title="Soft delete"
+                          style={{
+                            fontSize: 11, padding: "4px 9px", borderRadius: 8,
+                            border: "1px solid rgba(216,90,48,0.25)",
+                            background: "rgba(216,90,48,0.06)",
+                            cursor: isDeleted ? "default" : "pointer",
+                            color: "#D85A30", whiteSpace: "nowrap",
+                            opacity: isDeleted ? 0.35 : 1,
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* ── Pagination ───────────────────────────────────────────── */}
+      {/* ── Pagination ────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "1rem", justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, color: "var(--color-text-secondary)", marginRight: 4 }}>
+        <span style={{ fontSize: 12.5, color: "#8a7d5e", marginRight: 4, fontFamily: "'DM Sans', sans-serif" }}>
           {total} properties — page {page + 1} of {totalPages}
         </span>
-        <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} style={{
-          fontSize: 13, padding: "4px 10px",
-          borderRadius: "var(--border-radius-md)",
-          border: "0.5px solid var(--color-border-secondary)",
-          background: "transparent",
+        <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="ap-pg" style={{
+          fontSize: 13, padding: "5px 11px", borderRadius: 9,
+          border: "1.5px solid rgba(138,125,94,0.2)", background: "transparent",
           cursor: page === 0 ? "default" : "pointer",
-          opacity: page === 0 ? 0.38 : 1, color: "var(--color-text-primary)",
+          opacity: page === 0 ? 0.38 : 1, color: "#8a7d5e",
+          fontFamily: "'DM Sans', sans-serif",
         }}>← Prev</button>
 
         {Array.from({ length: totalPages }, (_, i) => i)
@@ -1325,22 +1258,20 @@ function AllPropertiesContent() {
           }, [])
           .map((item, idx) =>
             item === "…"
-              ? <span key={`e-${idx}`} style={{ fontSize: 13, color: "var(--color-text-secondary)", padding: "0 2px" }}>…</span>
+              ? <span key={`e-${idx}`} style={{ fontSize: 13, color: "#b0a890", padding: "0 2px" }}>…</span>
               : <PageBtn key={item} n={item} />
           )}
 
-        <button disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} style={{
-          fontSize: 13, padding: "4px 10px",
-          borderRadius: "var(--border-radius-md)",
-          border: "0.5px solid var(--color-border-secondary)",
-          background: "transparent",
+        <button disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} className="ap-pg" style={{
+          fontSize: 13, padding: "5px 11px", borderRadius: 9,
+          border: "1.5px solid rgba(138,125,94,0.2)", background: "transparent",
           cursor: page >= totalPages - 1 ? "default" : "pointer",
-          opacity: page >= totalPages - 1 ? 0.38 : 1, color: "var(--color-text-primary)",
+          opacity: page >= totalPages - 1 ? 0.38 : 1, color: "#8a7d5e",
+          fontFamily: "'DM Sans', sans-serif",
         }}>Next →</button>
       </div>
 
-      {/* ── Modals ───────────────────────────────────────────────── */}
-
+      {/* ── Modals ────────────────────────────────────────────────── */}
       <DeleteModal
         target={deleteTarget}
         loading={deleting}
@@ -1358,17 +1289,11 @@ function AllPropertiesContent() {
       )}
 
       {agentModal != null && (
-        <AgentModal
-          agentId={agentModal}
-          onClose={() => setAgentModal(null)}
-        />
+        <AgentModal agentId={agentModal} onClose={() => setAgentModal(null)} />
       )}
 
       {historyTarget && (
-        <PriceHistoryModal
-          target={historyTarget}
-          onClose={() => setHistoryTarget(null)}
-        />
+        <PriceHistoryModal target={historyTarget} onClose={() => setHistoryTarget(null)} />
       )}
 
       {toast && (
