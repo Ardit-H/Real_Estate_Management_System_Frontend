@@ -39,12 +39,24 @@ function AdminDetailModal({item,onClose,onRefresh,notify}){
   const [tab,setTab]=useState("details");
   const [stForm,setStForm]=useState({status:item.status,actual_cost:item.actual_cost||""});
   const [assignId,setAssignId]=useState(item.assigned_to||"");
+  const [agents,setAgents]=useState([]);
+  const [agentsLoading,setAgentsLoading]=useState(false);
   const [editF,setEditF]=useState({title:item.title,description:item.description||"",category:item.category,priority:item.priority,estimated_cost:item.estimated_cost||"",actual_cost:item.actual_cost||""});
   const [saving,setSaving]=useState(false);
   const done=(msg)=>{notify(msg);onRefresh();onClose()};
 
+  // Merr agjentët kur hapet tab "assign"
+  useEffect(()=>{
+    if(tab!=="assign") return;
+    setAgentsLoading(true);
+    api.get("/api/users/agents/list")
+      .then(r=>setAgents(r.data||[]))
+      .catch(()=>notify("Gabim në ngarkimin e agjentëve","error"))
+      .finally(()=>setAgentsLoading(false));
+  },[tab]);
+
   const updateStatus=async()=>{setSaving(true);try{await api.patch(`/api/maintenance/${item.id}/status`,{status:stForm.status,actual_cost:stForm.actual_cost?Number(stForm.actual_cost):null});done("Status updated ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
-  const assign=async()=>{if(!assignId){notify("Enter user ID","error");return}setSaving(true);try{await api.patch(`/api/maintenance/${item.id}/assign`,{assigned_to:Number(assignId)});done("Assigned ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
+  const assign=async()=>{if(!assignId){notify("Zgjidh një agjent","error");return}setSaving(true);try{await api.patch(`/api/maintenance/${item.id}/assign`,{assigned_to:Number(assignId)});done("Assigned ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
   const edit=async()=>{setSaving(true);try{await api.put(`/api/maintenance/${item.id}`,{title:editF.title,description:editF.description||null,category:editF.category,priority:editF.priority,estimated_cost:editF.estimated_cost?Number(editF.estimated_cost):null,actual_cost:editF.actual_cost?Number(editF.actual_cost):null});done("Saved ✓")}catch(err){notify(err.response?.data?.message||"Error","error")}finally{setSaving(false)}};
 
   const tabs=[{id:"details",label:"Details"},{id:"status",label:"Update Status"},{id:"assign",label:"Assign"},{id:"edit",label:"Edit"}];
@@ -65,9 +77,22 @@ function AdminDetailModal({item,onClose,onRefresh,notify}){
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button className="ad-btn" onClick={onClose} style={{padding:"10px 18px",borderRadius:10,border:"1.5px solid #e4ddd0",background:"transparent",color:C.textSub,fontSize:13}}>Cancel</button><button className="ad-btn" onClick={updateStatus} disabled={saving} style={{padding:"10px 22px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#b0983e)`,color:C.dark,fontSize:13,fontWeight:700}}>{saving?"Updating...":"Update Status"}</button></div>
     </div>)}
     {tab==="assign"&&(<div>
-      <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:13,color:"#1d4ed8"}}>💡 Admin can assign any user. Assigning sets status to IN_PROGRESS automatically.</div>
-      <Field label="Assign to User ID"><input className="ad-in" type="number" min="1" placeholder="User ID" value={assignId} onChange={e=>setAssignId(e.target.value)}/></Field>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button className="ad-btn" onClick={onClose} style={{padding:"10px 18px",borderRadius:10,border:"1.5px solid #e4ddd0",background:"transparent",color:C.textSub,fontSize:13}}>Cancel</button><button className="ad-btn" onClick={assign} disabled={saving} style={{padding:"10px 22px",borderRadius:10,background:C.dark,color:"#f5f0e8",fontSize:13,fontWeight:600}}>{saving?"Assigning...":"Assign"}</button></div>
+      <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:13,color:"#1d4ed8"}}>💡 Admin mund të caktojë çdo agjent. Caktimi e vendos statusin në IN_PROGRESS automatikisht.</div>
+      <Field label="Cakto te Agjenti">
+        {agentsLoading
+          ? <div style={{padding:"10px 13px",border:"1.5px solid #e4ddd0",borderRadius:10,fontSize:13,color:C.muted,background:"#fafafa"}}>Duke ngarkuar agjentët...</div>
+          : <select className="ad-in" value={assignId} onChange={e=>setAssignId(e.target.value)}>
+              <option value="">— Zgjidh agjentin —</option>
+              {agents.map(a=>(
+                <option key={a.id} value={a.id}>
+                  {a.first_name} {a.last_name} (#{a.id})
+                </option>
+              ))}
+            </select>
+        }
+      </Field>
+      {assignId&&agents.length>0&&(()=>{const a=agents.find(x=>String(x.id)===String(assignId));return a?(<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#166534",marginBottom:4}}>✓ {a.first_name} {a.last_name} do të caktohet (ID: #{a.id})</div>):null})()}
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:14}}><button className="ad-btn" onClick={onClose} style={{padding:"10px 18px",borderRadius:10,border:"1.5px solid #e4ddd0",background:"transparent",color:C.textSub,fontSize:13}}>Cancel</button><button className="ad-btn" onClick={assign} disabled={saving||!assignId} style={{padding:"10px 22px",borderRadius:10,background:C.dark,color:"#f5f0e8",fontSize:13,fontWeight:600,opacity:!assignId?.5:1}}>{saving?"Duke caktuar...":"Cakto Agjentin"}</button></div>
     </div>)}
     {tab==="edit"&&(<div>
       <Field label="Title" required><input className="ad-in" value={editF.title} onChange={e=>setEditF(p=>({...p,title:e.target.value}))} maxLength={255}/></Field>
