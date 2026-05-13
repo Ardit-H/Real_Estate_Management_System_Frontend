@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../../api/axios";
+import { createPortal } from "react-dom";
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const C = {
@@ -334,42 +335,126 @@ export function AiContractSummaryButton({ contract }) {
       });
       setResult(r.data);
       setOpen(true);
-    } catch(e) { alert("AI error: " + (e.response?.data?.message || "Please try again")); }
-    finally { setLoading(false); }
+    } catch(e) {
+      alert("AI error: " + (e.response?.data?.message || "Please try again"));
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const modal = open && result && createPortal(
+    <div
+      style={{
+        position:"fixed", inset:0, zIndex:99999,
+        background:"rgba(8,6,4,0.82)",
+        backdropFilter:"blur(14px)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        padding:20, fontFamily:"'DM Sans',sans-serif",
+      }}
+      onClick={() => setOpen(false)}
+    >
+      <div
+        style={{
+          width:"100%", maxWidth:560,
+          background:"#faf7f2",
+          borderRadius:20,
+          boxShadow:"0 48px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,184,122,0.15)",
+          overflow:"hidden",
+          animation:"ai-fade .26s cubic-bezier(0.16,1,0.3,1)",
+          maxHeight:"88vh", display:"flex", flexDirection:"column",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          background:"linear-gradient(160deg,#141210 0%,#1e1a14 50%,#241e16 100%)",
+          padding:"18px 22px",
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          flexShrink:0, position:"relative",
+        }}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"2px",background:"linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)"}}/>
+          <div style={{display:"flex", alignItems:"center", gap:10}}>
+            <div style={{width:36,height:36,borderRadius:10,background:"rgba(201,184,122,0.15)",border:"1.5px solid rgba(201,184,122,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>
+              ✨
+            </div>
+            <div>
+              <p style={{margin:0,fontSize:15,fontWeight:700,color:"#f5f0e8",fontFamily:"'Cormorant Garamond',Georgia,serif"}}>
+                AI Contract Summary
+              </p>
+              <p style={{margin:0,fontSize:11,color:"rgba(245,240,232,0.38)"}}>
+                Contract #{contract.id} · Powered by Groq
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            style={{width:30,height:30,borderRadius:8,background:"rgba(245,240,232,0.08)",border:"1px solid rgba(245,240,232,0.12)",color:"rgba(245,240,232,0.55)",fontSize:17,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
+          >✕</button>
+        </div>
+
+        {/* Meta strip */}
+        <div style={{background:"#f0ece3",borderBottom:"1.5px solid #e8e2d6",padding:"10px 22px",display:"flex",gap:24,flexWrap:"wrap",flexShrink:0}}>
+          {[
+            ["Property",  `#${contract.property_id}`],
+            ["Client",    `#${contract.client_id}`],
+            ["Rent",      `€${Number(contract.rent).toLocaleString("de-DE")}/mo`],
+            ["Status",    contract.status],
+          ].map(([l,v]) => (
+            <div key={l} style={{display:"flex",flexDirection:"column",gap:1}}>
+              <span style={{fontSize:9.5,fontWeight:700,color:"#b0a890",textTransform:"uppercase",letterSpacing:"0.8px"}}>{l}</span>
+              <span style={{fontSize:13,fontWeight:600,color:"#1a1714"}}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div style={{padding:"18px 22px",overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:10}}>
+          {[
+            { icon:"📋", label:"Summary",               value: result.summary },
+            { icon:"📅", label:"Key Dates",             value: result.key_dates },
+            { icon:"💰", label:"Financial Obligations", value: result.financial_obligations },
+            { icon:"⚠️", label:"Risks",                 value: result.risks },
+            { icon:"📊", label:"Status Note",           value: result.status_note },
+          ].filter(s => s.value).map(({ icon, label, value }) => (
+            <div key={label} style={{background:"#f8f5f0",border:"1.5px solid #ede9df",borderRadius:12,padding:"13px 16px"}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.9px",textTransform:"uppercase",color:"#9a8c6e",marginBottom:6,display:"flex",alignItems:"center",gap:5}}>
+                <span>{icon}</span>{label}
+              </div>
+              <p style={{margin:0,fontSize:13.5,color:"#1a1714",lineHeight:1.65}}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{padding:"12px 22px",borderTop:"1.5px solid #e8e2d6",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fdf9f4",flexShrink:0}}>
+          <span style={{fontSize:11.5,color:"#b0a890"}}>AI-generated · may not be 100% accurate</span>
+          <button
+            onClick={() => setOpen(false)}
+            style={{padding:"8px 20px",borderRadius:9,background:"linear-gradient(135deg,#c9b87a,#b0983e)",border:"none",color:"#1a1714",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}
+          >Close</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 
   return (
     <>
       <style>{CSS}</style>
-      <button className="ai-btn" onClick={summarize} disabled={loading}
-        style={{padding:"5px 12px",borderRadius:8,background:"#f0fdf4",color:"#059669",border:"1px solid #86efac",fontSize:11.5,fontWeight:600,display:"inline-flex",alignItems:"center",gap:5}}>
-        {loading ? <div style={{width:12,height:12,border:"2px solid #86efac",borderTop:"2px solid #059669",borderRadius:"50%",animation:"ai-spin .7s linear infinite"}}/> : "✨"} AI Summary
+      <button
+        className="ai-btn"
+        onClick={summarize}
+        disabled={loading}
+        style={{padding:"7px 14px",borderRadius:9,background:loading?"#f0fdf4":"linear-gradient(135deg,#d4f1e4,#bbedd6)",color:"#059669",border:"1.5px solid #86efac",fontSize:12.5,fontWeight:600,display:"inline-flex",alignItems:"center",gap:6,cursor:loading?"not-allowed":"pointer"}}
+      >
+        {loading
+          ? <div style={{width:13,height:13,border:"2px solid #86efac",borderTop:"2px solid #059669",borderRadius:"50%",animation:"ai-spin .7s linear infinite"}}/>
+          : <span style={{fontSize:14}}>✨</span>
+        }
+        {loading ? "Analyzing..." : "AI Summary"}
       </button>
 
-      {open && result && (
-        <div style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(8,6,4,.72)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setOpen(false)}>
-          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:C.surface,borderRadius:16,boxShadow:"0 32px 80px rgba(0,0,0,.35)",overflow:"hidden",animation:"ai-fade .22s ease"}}>
-            <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.border}`,background:"#fdf9f4",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <p style={{margin:0,fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Cormorant Garamond',Georgia,serif"}}>✨ AI Contract Summary #{contract.id}</p>
-              <button onClick={()=>setOpen(false)} style={{border:"none",background:"none",color:C.muted,cursor:"pointer",fontSize:18}}>✕</button>
-            </div>
-            <div style={{padding:20,display:"flex",flexDirection:"column",gap:12}}>
-              {[
-                ["📋 Summary",               result.summary],
-                ["📅 Key Dates",             result.key_dates],
-                ["💰 Financial Obligations", result.financial_obligations],
-                ["⚠️ Risks",                result.risks],
-                ["📊 Status",               result.status_note],
-              ].map(([l,v])=>(
-                <div key={l} style={{background:"#f5f0e8",borderRadius:10,padding:"10px 14px"}}>
-                  <p style={{margin:"0 0 4px",fontSize:10.5,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.7px"}}>{l}</p>
-                  <p style={{margin:0,fontSize:13.5,color:C.text,lineHeight:1.6}}>{v || "—"}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {modal}
     </>
   );
 }
