@@ -390,7 +390,7 @@ export default function ClientDashboard() {
         api.get("/api/users/clients/me"),
         api.get("/api/properties/saved?page=0&size=6"),
         api.get("/api/leads/my/client?page=0&size=10"),
-        api.get(`/api/contracts/lease/client/${user?.id}?page=0&size=5`),
+        api.get(`/api/mycontracts/lease/client/${user?.id}?page=0&size=5`),
         api.get("/api/rentals/applications/my?page=0&size=5"),
         api.get("/api/sales/applications/my?page=0&size=5"),
         api.get("/api/properties/filter?page=0&size=6&status=AVAILABLE&isFeatured=true"),
@@ -603,9 +603,9 @@ export default function ClientDashboard() {
               <QuickAction icon="🏠" label="Browse" desc="Find properties" color="#c9b87a" onClick={()=>navigate("/client/browseproperties")}/>
               <QuickAction icon="❤️" label="Saved" desc="Your favourites" color="#d4855a" onClick={()=>navigate("/client/savedproperties")}/>
               <QuickAction icon="📋" label="Requests" desc="Lead requests" color="#a4b07e" onClick={()=>navigate("/client/leads")}/>
-              <QuickAction icon="📄" label="Contracts" desc="Lease agreements" color="#7eb8a4" onClick={()=>navigate("/client/contracts")}/>
-              <QuickAction icon="💳" label="Payments" desc="Payment history" color="#c9b87a" onClick={()=>navigate("/client/payments")}/>
-              <QuickAction icon="✉️" label="Applications" desc="My applications" color="#a4b07e" onClick={()=>navigate("/client/leads")}/>
+              <QuickAction icon="📄" label="Contracts" desc="Lease agreements" color="#7eb8a4" onClick={()=>navigate("/client/mycontracts")}/>
+              <QuickAction icon="💳" label="Payments" desc="Payment history" color="#c9b87a" onClick={()=>navigate("/client/mypayments")}/>
+              <QuickAction icon="✉️" label="Requests" desc="My requests" color="#a4b07e" onClick={()=>navigate("/client/leads")}/>
             </div>
           </div>
 
