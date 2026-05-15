@@ -146,6 +146,7 @@ export default function AdminAllAgents() {
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [impersonating, setImpersonating] = useState(false);
   const [toast, setToast]                 = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -223,6 +224,23 @@ export default function AdminAllAgents() {
       setImpersonating(false);
     }
   };
+  const handleToggleActive = async (agent) => {
+    setTogglingId(agent.id);
+    try {
+        await api.patch(`/api/users/${agent.id}/status`, {
+            is_active: !agent.is_active,
+        });
+        showToast(
+            `${getFullName(agent)} ${!agent.is_active ? "activated" : "deactivated"} successfully`,
+            "success"
+        );
+        await fetchAgents();
+    } catch {
+        showToast("Failed to update status", "error");
+    } finally {
+        setTogglingId(null);
+    }
+};
 
   // ── Avatar helper ───────────────────────────────────────────
   const Avatar = ({ agent, size = 38 }) =>
@@ -357,6 +375,7 @@ export default function AdminAllAgents() {
                           disabled={!agent.is_active}
                           title={!agent.is_active ? "Cannot impersonate inactive user" : undefined}
                         >
+                          
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -456,6 +475,21 @@ export default function AdminAllAgents() {
 
               <div className="aa-modal-footer">
                 <button className="aa-btn-cancel" onClick={() => setViewTarget(null)}>Close</button>
+                <button
+        className="aa-btn-cancel"
+        onClick={() => {
+            handleToggleActive(viewTarget);
+            setViewTarget(null);
+        }}
+        style={{
+            color: viewTarget.is_active ? "#f87171" : "#34d399",
+            borderColor: viewTarget.is_active
+                ? "rgba(248,113,113,0.25)"
+                : "rgba(52,211,153,0.25)",
+        }}
+    >
+        {viewTarget.is_active ? "Deactivate" : "Activate"}
+    </button>
                 <button
                   className="aa-btn-confirm"
                   disabled={!viewTarget.is_active}
