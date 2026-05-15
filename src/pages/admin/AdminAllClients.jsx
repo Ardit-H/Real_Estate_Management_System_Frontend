@@ -3,13 +3,6 @@ import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
-// ── Field names nga UserResponse DTO ──────────────────────────
-// id, email, first_name, last_name, role, tenant_id, is_active, created_at
-//
-// Field names nga ClientProfileResponse DTO ───────────────────
-// id, user_id, phone, preferred_contact,
-// budget_min, budget_max, preferred_type, preferred_city, photo_url
-
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -117,7 +110,6 @@ const CSS = `
   .ac-toast.error   { border-color: rgba(248,113,113,0.3); }
 `;
 
-// ── Helpers — field names saktë nga DTO ───────────────────────
 function getFullName(u) {
   if (!u) return "";
   const first = u.first_name || "";
@@ -155,6 +147,7 @@ export default function AdminAllClients() {
   const [viewTarget, setViewTarget]       = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [impersonating, setImpersonating] = useState(false);
+  const [togglingId, setTogglingId]       = useState(null);
   const [toast, setToast]                 = useState(null);
 
   const showToast = (msg, type = "success") => {
@@ -165,14 +158,11 @@ export default function AdminAllClients() {
   const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
-      // UserResponse fields: id, email, first_name, last_name, role, is_active, created_at
       const usersRes = await api.get("/api/users");
       const clientUsers = (usersRes.data || []).filter(
         u => u.role?.toLowerCase() === "client"
       );
 
-      // ClientProfileResponse fields: id, user_id, phone, preferred_contact,
-      // budget_min, budget_max, preferred_type, preferred_city, photo_url
       const withProfiles = await Promise.allSettled(
         clientUsers.map(async (u) => {
           try {
@@ -230,7 +220,24 @@ export default function AdminAllClients() {
     }
   };
 
-  // ── Avatar helper ───────────────────────────────────────────
+  const handleToggleActive = async (client) => {
+    setTogglingId(client.id);
+    try {
+      await api.patch(`/api/users/${client.id}/status`, {
+        is_active: !client.is_active,
+      });
+      showToast(
+        `${getFullName(client)} ${!client.is_active ? "activated" : "deactivated"} successfully`,
+        "success"
+      );
+      await fetchClients();
+    } catch {
+      showToast("Failed to update status", "error");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const Avatar = ({ client, size = 38 }) =>
     client.profile?.photo_url ? (
       <img src={client.profile.photo_url} alt="" className="ac-avatar-img" style={{ width: size, height: size }} />
@@ -255,10 +262,10 @@ export default function AdminAllClients() {
         {/* ── Stats ── */}
         <div className="ac-stats">
           {[
-            { label: "Total Clients",  value: stats.total,       sub: "registered",        color: "#f5f0e8" },
-            { label: "Active",         value: stats.active,      sub: "currently active",  color: "#34d399" },
-            { label: "Inactive",       value: stats.inactive,    sub: "deactivated",       color: "#f87171" },
-            { label: "With Profile",   value: stats.withProfile, sub: "completed profiles",color: "#c9b87a" },
+            { label: "Total Clients",  value: stats.total,       sub: "registered",         color: "#f5f0e8" },
+            { label: "Active",         value: stats.active,      sub: "currently active",   color: "#34d399" },
+            { label: "Inactive",       value: stats.inactive,    sub: "deactivated",        color: "#f87171" },
+            { label: "With Profile",   value: stats.withProfile, sub: "completed profiles", color: "#c9b87a" },
           ].map(s => (
             <div className="ac-stat" key={s.label}>
               <p className="ac-stat-label">{s.label}</p>
@@ -369,6 +376,22 @@ export default function AdminAllClients() {
                           </svg>
                           Login as
                         </button>
+                        <button
+                          className="ac-btn"
+                          onClick={() => handleToggleActive(client)}
+                          disabled={togglingId === client.id}
+                          style={{
+                            background:   client.is_active ? "rgba(248,113,113,0.1)"  : "rgba(52,211,153,0.1)",
+                            borderColor:  client.is_active ? "rgba(248,113,113,0.25)" : "rgba(52,211,153,0.25)",
+                            color:        client.is_active ? "#f87171"                : "#34d399",
+                            opacity:      togglingId === client.id ? 0.5 : 1,
+                            cursor:       togglingId === client.id ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {togglingId === client.id
+                            ? "..."
+                            : client.is_active ? "Deactivate" : "Activate"}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -379,9 +402,7 @@ export default function AdminAllClients() {
         </div>
       </div>
 
-      {/* ════════════════════════════════
-          VIEW MODAL
-      ════════════════════════════════ */}
+      {/* ── VIEW MODAL ── */}
       {viewTarget && (
         <div className="ac-modal-overlay" onClick={() => setViewTarget(null)}>
           <div className="ac-modal" onClick={e => e.stopPropagation()}>
@@ -390,8 +411,6 @@ export default function AdminAllClients() {
               <p className="ac-modal-sub">Full details for this client</p>
             </div>
             <div className="ac-modal-body">
-
-              {/* Hero */}
               <div className="ac-profile-hero">
                 {viewTarget.profile?.photo_url ? (
                   <img src={viewTarget.profile.photo_url} alt="" className="ac-profile-avatar" />
@@ -410,7 +429,6 @@ export default function AdminAllClients() {
                 </div>
               </div>
 
-              {/* Details grid */}
               <div className="ac-grid">
                 <div className="ac-grid-item">
                   <div className="ac-grid-label">Preferred City</div>
@@ -453,6 +471,16 @@ export default function AdminAllClients() {
               <div className="ac-modal-footer">
                 <button className="ac-btn-cancel" onClick={() => setViewTarget(null)}>Close</button>
                 <button
+                  className="ac-btn-cancel"
+                  onClick={() => { handleToggleActive(viewTarget); setViewTarget(null); }}
+                  style={{
+                    color:       viewTarget.is_active ? "#f87171" : "#34d399",
+                    borderColor: viewTarget.is_active ? "rgba(248,113,113,0.25)" : "rgba(52,211,153,0.25)",
+                  }}
+                >
+                  {viewTarget.is_active ? "Deactivate" : "Activate"}
+                </button>
+                <button
                   className="ac-btn-confirm"
                   disabled={!viewTarget.is_active}
                   onClick={() => { setViewTarget(null); setConfirmTarget(viewTarget); }}
@@ -465,9 +493,7 @@ export default function AdminAllClients() {
         </div>
       )}
 
-      {/* ════════════════════════════════
-          CONFIRM IMPERSONATE MODAL
-      ════════════════════════════════ */}
+      {/* ── CONFIRM IMPERSONATE MODAL ── */}
       {confirmTarget && (
         <div className="ac-modal-overlay" onClick={() => setConfirmTarget(null)}>
           <div className="ac-modal" onClick={e => e.stopPropagation()}>
@@ -508,7 +534,6 @@ export default function AdminAllClients() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
         <div className={`ac-toast ${toast.type}`}>
           <span>{toast.type === "success" ? "✅" : "❌"}</span>
