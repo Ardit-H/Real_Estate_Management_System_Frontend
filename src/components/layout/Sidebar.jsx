@@ -58,6 +58,7 @@ const NAV_CONFIG = {
       { to: "/client/clientdashboard",        label: "Home",          emoji: "◼" },
       { to: "/client/browseproperties", label: "Browse Properties",  emoji: "🔍" },
       { to: "/client/savedproperties",  label: "Saved Properties",   emoji: "❤️" },
+      { to: "/client/agents", label: "Our Agents", emoji: "🤝" },
     ]},
     { group: "My Activity", items: [
       { to: "/client/myapplications",   label: "My Requests",    emoji: "📋" },
