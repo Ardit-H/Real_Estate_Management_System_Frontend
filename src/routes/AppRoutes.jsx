@@ -42,6 +42,7 @@ import BackgroundJobs from "../pages/admin/BackgroundJobs";
 import AdminAgentAnalysis from "../pages/admin/AdminAgentAnalysis";
 import AdminAllAgents from "../pages/admin/AdminAllAgents";
 import AdminAllClients from "../pages/admin/AdminAllClients";
+import AgentsList from "../pages/client/AgentsList";
 
 export default function AppRoutes() {
     return (
@@ -63,6 +64,7 @@ export default function AppRoutes() {
     <Route path="/admin/ai/agents" element={<AdminAgentAnalysis />} />
     <Route path="/admin/agents" element={<AdminAllAgents />} />
     <Route path="/admin/clients" element={<AdminAllClients />} />
+    <Route path="/client/agents" element={<AgentsList />} />
 
     {/* ROLE DASHBOARDS */}
     <Route path="/admin" element={<AdminDashboard />} />
