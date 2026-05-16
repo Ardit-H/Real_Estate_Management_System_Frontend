@@ -1,0 +1,7 @@
+import { useEffect } from "react";
+import { C } from "./maintenanceHelpers";
+
+export default function Modal({title,onClose,children,wide=false}){
+  useEffect(()=>{const h=e=>e.key==="Escape"&&onClose();window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[onClose]);
+  return(<div style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(8,6,4,.72)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={e=>e.target===e.currentTarget&&onClose()}><div style={{width:"100%",maxWidth:wide?680:520,background:C.surface,borderRadius:16,boxShadow:"0 32px 80px rgba(0,0,0,.35)",maxHeight:"90vh",overflowY:"auto",animation:"mn-scale-in .22s ease"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 24px",borderBottom:`1px solid ${C.border}`,background:"#fdf9f4"}}><p style={{margin:0,fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Cormorant Garamond',Georgia,serif"}}>{title}</p><button onClick={onClose} style={{width:30,height:30,border:"none",background:"none",color:C.muted,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div><div style={{padding:"22px 24px"}}>{children}</div></div></div>)
+}
