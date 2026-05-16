@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import api from "../../api/axios";
-import { BASE_URL } from "../../constants/propertyConstants";
+import api from "../../../api/axios";
+import { BASE_URL } from "../../../constants/propertyConstants";
 import Modal from "./Modal";
 import Toast from "./Toast";
 

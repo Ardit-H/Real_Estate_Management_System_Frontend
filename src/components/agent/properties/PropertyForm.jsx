@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { TYPE_OPTIONS, LISTING_OPTIONS, FEATURE_OPTIONS } from "../../constants/propertyConstants";
-import api from "../../api/axios";
+import { TYPE_OPTIONS, LISTING_OPTIONS, FEATURE_OPTIONS } from "../../../constants/propertyConstants";
+import api from "../../../api/axios";
 
 const SectionTitle = ({ children }) => (
   <div style={{

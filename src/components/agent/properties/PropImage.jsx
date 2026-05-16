@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BASE_URL } from "../../constants/propertyConstants";
+import { BASE_URL } from "../../../constants/propertyConstants";
 
 export default function PropImage({ src, title }) {
   const [err, setErr] = useState(false);

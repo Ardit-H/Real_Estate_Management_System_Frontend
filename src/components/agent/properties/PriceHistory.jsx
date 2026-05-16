@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import api from "../../api/axios";
-import { fmtPrice } from "../../constants/propertyConstants";
+import api from "../../../api/axios";
+import { fmtPrice } from "../../../constants/propertyConstants";
 import Modal from "./Modal";
 
 export default function PriceHistory({ propertyId, onClose }) {

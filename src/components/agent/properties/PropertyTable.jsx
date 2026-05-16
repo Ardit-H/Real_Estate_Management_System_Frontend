@@ -1,4 +1,4 @@
-import { STATUS_CONFIG, TYPE_ICONS, fmtPrice } from "../../constants/propertyConstants";
+import { STATUS_CONFIG, TYPE_ICONS, fmtPrice } from "../../../constants/propertyConstants";
 import PropImage from "./PropImage";
 
 export default function PropertyTable({ properties, page, totalPages, onPageChange, onAction, loading, error, onRetry }) {
