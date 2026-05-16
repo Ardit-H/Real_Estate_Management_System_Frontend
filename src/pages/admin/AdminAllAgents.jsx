@@ -4,15 +4,15 @@ import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
 import "../../styles/admin/AdminAllAgents.css";
-import AgentsStats          from "../../components/admin/agents/AgentsStats";
-import AgentsToolbar        from "../../components/admin/agents/AgentsToolbar";
-import AgentsTable          from "../../components/admin/agents/AgentsTable";
-import AgentViewModal       from "../../components/admin/agents/AgentViewModal";
+import AgentsStats           from "../../components/admin/agents/AgentsStats";
+import AgentsToolbar         from "../../components/admin/agents/AgentsToolbar";
+import AgentsTable           from "../../components/admin/agents/AgentsTable";
+import AgentViewModal        from "../../components/admin/agents/AgentViewModal";
 import AgentImpersonateModal from "../../components/admin/agents/AgentImpersonateModal";
-import { getFullName }      from "../../components/admin/agents/agentsHelpers";
+import { getFullName }       from "../../components/admin/agents/agentsHelpers";
 
 export default function AdminAllAgents() {
-  const { startImpersonation } = useContext(AuthContext);
+  const { user, startImpersonation } = useContext(AuthContext);
 
   const [agents,        setAgents]        = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -123,6 +123,7 @@ export default function AdminAllAgents() {
           filterActive={filterActive}
           setFilterActive={setFilterActive}
           count={filtered.length}
+          tenantSlug={user?.tenantSlug}
         />
 
         <div className="aa-table-wrap">

@@ -12,7 +12,7 @@ import ClientImpersonateModal from "../../components/admin/clients/ClientImperso
 import { getFullName }        from "../../components/admin/clients/clientsHelpers";
 
 export default function AdminAllClients() {
-  const { startImpersonation } = useContext(AuthContext);
+  const { user, startImpersonation } = useContext(AuthContext);
 
   const [clients,       setClients]       = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -119,6 +119,7 @@ export default function AdminAllClients() {
           filterActive={filterActive}
           setFilterActive={setFilterActive}
           count={filtered.length}
+          tenantSlug={user?.tenantSlug}
         />
 
         <div className="ac-table-wrap">

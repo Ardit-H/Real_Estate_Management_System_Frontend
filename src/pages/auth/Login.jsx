@@ -599,17 +599,7 @@ export default function Login() {
               ) : "Sign In →"}
             </button>
 
-            {/* Divider */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ flex: 1, height: 1, background: "#e8e0d0" }} />
-              <span style={{ fontSize: 12, color: "#b0a88e" }}>or</span>
-              <div style={{ flex: 1, height: 1, background: "#e8e0d0" }} />
-            </div>
-
-            {/* Register link */}
-            <Link to="/register" className="register-btn">
-              Don't have an account? <strong style={{ color: "#3d3828" }}>Create one</strong>
-            </Link>
+          
           </div>
 
           {/* Footer */}
