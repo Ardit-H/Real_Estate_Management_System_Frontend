@@ -3,13 +3,13 @@ import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
  
-import StatCard      from "../../components/agent/StatCard";
-import Toast         from "../../components/agent/Toast";
-import Modal         from "../../components/agent/Modal";
-import PropertyForm  from "../../components/agent/PropertyForm";
-import ImageManager  from "../../components/agent/ImageManager";
-import PriceHistory  from "../../components/agent/PriceHistory";
-import PropertyTable from "../../components/agent/PropertyTable";
+import StatCard      from "../../components/agent/properties/StatCard";
+import Toast         from "../../components/agent/properties/Toast";
+import Modal         from "../../components/agent/properties/Modal";
+import PropertyForm  from "../../components/agent/properties/PropertyForm";
+import ImageManager  from "../../components/agent/properties/ImageManager";
+import PriceHistory  from "../../components/agent/properties/PriceHistory";
+import PropertyTable from "../../components/agent/properties/PropertyTable";
 import { STATUS_CONFIG } from "../../constants/propertyConstants";
  
 const CSS = `

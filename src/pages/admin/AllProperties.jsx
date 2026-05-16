@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useContext } from "react";
 import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
-import Modal         from "../../components/agent/Modal";
-import PropertyForm  from "../../components/agent/PropertyForm";
+import Modal         from "../../components/agent/properties/Modal";
+import PropertyForm  from "../../components/agent/properties/PropertyForm";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
