@@ -115,9 +115,9 @@ export default function Register() {
     });
     setLoading(false);
     if (!res) { setError("Registration failed. Please try again."); return; }
-    if (role === "admin")      navigate("/admin");
-    else if (role === "agent") navigate("/agent");
-    else navigate("/client");
+    if (role === "admin")      navigate("/");
+    else if (role === "agent") navigate("/");
+    else navigate("/");
   };
 
   const current = SLIDES[slide];
