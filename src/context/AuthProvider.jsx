@@ -62,7 +62,7 @@ export default function AuthProvider({ children }) {
                 role:       form.role,
                 tenantSlug: form.tenantSlug,
                 tenantName: form.tenantName,
-                inviteToken: form.inviteToken || null,
+                inviteToken: form.inviteToken || null
             };
             const res = await api.post("/api/auth/register", payload);
             return res.data;
