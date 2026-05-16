@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+.ac * { box-sizing: border-box; }
+.ac { font-family: 'DM Sans', system-ui, sans-serif; background: #f2ede4; min-height: 100vh; }
+.ac-card { transition: transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94),box-shadow 0.22s ease; }
+.ac-card:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(20,16,10,0.12) !important; }
+.ac-btn { transition: all 0.17s ease; }
+.ac-btn:hover:not(:disabled) { opacity: 0.86; transform: translateY(-1px); }
+.ac-in:focus { border-color: #8a7d5e !important; box-shadow: 0 0 0 3px rgba(138,125,94,0.13) !important; outline: none; }
+
+@keyframes ac-scale-in { from{opacity:0;transform:scale(0.95) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+@keyframes ac-card-in  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+@keyframes ac-spin     { to{transform:rotate(360deg)} }
+@keyframes ac-toast    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes ac-glow     { 0%,100%{opacity:0.07} 50%{opacity:0.14} }
+@keyframes ac-shimmer  { 0%{background-position:-800px 0} 100%{background-position:800px 0} }
