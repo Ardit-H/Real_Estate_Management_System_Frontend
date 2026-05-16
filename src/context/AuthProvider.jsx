@@ -15,23 +15,27 @@ export default function AuthProvider({ children }) {
     });
 
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error,   setError]   = useState(null);
 
     // ───────── LOGIN ─────────
     const login = async (email, password) => {
         setLoading(true);
         setError(null);
         try {
-            const res = await api.post("/api/auth/login", { email, password });
+            const res  = await api.post("/api/auth/login", { email, password });
             const data = res.data;
+
+            // schema_name = "tenant_rose_1" → e ruajmë si tenantSlug
             const userInfo = {
-                id: data.user_id,
-                email: data.email,
-                fullName: data.full_name,
-                role: data.role?.toLowerCase(),
-                tenantId: data.tenant_id,
+                id:         data.user_id,
+                email:      data.email,
+                fullName:   data.full_name,
+                role:       data.role?.toLowerCase(),
+                tenantId:   data.tenant_id,
                 tenantName: data.tenant_name,
+                tenantSlug: data.schema_name,   // ← e shtova
             };
+
             localStorage.setItem("access_token", data.access_token);
             localStorage.setItem("refresh_token", data.refresh_token);
             localStorage.setItem("user_info", JSON.stringify(userInfo));
@@ -51,13 +55,14 @@ export default function AuthProvider({ children }) {
         setError(null);
         try {
             const payload = {
-                email: form.email,
-                password: form.password,
-                firstName: form.firstName,
-                lastName: form.lastName,
-                role: form.role,
+                email:      form.email,
+                password:   form.password,
+                firstName:  form.firstName,
+                lastName:   form.lastName,
+                role:       form.role,
                 tenantSlug: form.tenantSlug,
                 tenantName: form.tenantName,
+                inviteToken: form.inviteToken || null,
             };
             const res = await api.post("/api/auth/register", payload);
             return res.data;
@@ -73,9 +78,7 @@ export default function AuthProvider({ children }) {
     const logout = async () => {
         try {
             const refreshToken = localStorage.getItem("refresh_token");
-            if (refreshToken) {
-                await api.post("/api/auth/logout", { refreshToken });
-            }
+            if (refreshToken) await api.post("/api/auth/logout", { refreshToken });
         } catch (_) {}
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
@@ -92,8 +95,8 @@ export default function AuthProvider({ children }) {
     const refreshToken = async () => {
         try {
             const token = localStorage.getItem("refresh_token");
-            const res = await api.post("/api/auth/refresh", { refreshToken: token });
-            localStorage.setItem("access_token", res.data.access_token);
+            const res   = await api.post("/api/auth/refresh", { refreshToken: token });
+            localStorage.setItem("access_token",  res.data.access_token);
             localStorage.setItem("refresh_token", res.data.refresh_token);
             return res.data;
         } catch (err) {
@@ -112,12 +115,13 @@ export default function AuthProvider({ children }) {
 
             localStorage.setItem("access_token", data.token);
 
-           const impersonatedUser = {
-    id:       userId,
-    email:    data.email,
-    role:     data.role?.toLowerCase(),
-    fullName: data.full_name || data.email?.split("@")[0],
-};
+            const impersonatedUser = {
+                id:       userId,
+                email:    data.email,
+                role:     data.role?.toLowerCase(),
+                fullName: data.full_name || data.email?.split("@")[0],
+            };
+
             localStorage.setItem("user_info",     JSON.stringify(impersonatedUser));
             localStorage.setItem("impersonating", JSON.stringify({
                 email: data.email,
@@ -127,7 +131,6 @@ export default function AuthProvider({ children }) {
             setUser(impersonatedUser);
             setImpersonating({ email: data.email, role: data.role });
 
-            // Navigate te dashboard i rolerit
             const role = data.role?.toLowerCase();
             if (role === "agent")       window.location.href = "/agent";
             else if (role === "client") window.location.href = "/client/clientdashboard";
@@ -139,9 +142,7 @@ export default function AuthProvider({ children }) {
     };
 
     const exitImpersonation = async () => {
-        try {
-            await api.post("/api/admin/impersonate/exit");
-        } catch (_) {}
+        try { await api.post("/api/admin/impersonate/exit"); } catch (_) {}
 
         const adminToken    = localStorage.getItem("admin_token");
         const adminUserInfo = localStorage.getItem("admin_user_info");
@@ -155,27 +156,23 @@ export default function AuthProvider({ children }) {
 
         setUser(JSON.parse(adminUserInfo));
         setImpersonating(null);
-
-        // Navigate te dashboard i adminit
         window.location.href = "/admin";
     };
 
     return (
-        <AuthContext.Provider
-            value={{
-                user,
-                login,
-                register,
-                logout,
-                refreshToken,
-                loading,
-                error,
-                isAuthenticated: !!user,
-                impersonating,
-                startImpersonation,
-                exitImpersonation,
-            }}
-        >
+        <AuthContext.Provider value={{
+            user,
+            login,
+            register,
+            logout,
+            refreshToken,
+            loading,
+            error,
+            isAuthenticated: !!user,
+            impersonating,
+            startImpersonation,
+            exitImpersonation,
+        }}>
             {children}
         </AuthContext.Provider>
     );
