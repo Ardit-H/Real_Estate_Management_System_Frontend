@@ -11,6 +11,7 @@ const NAV_CONFIG = {
       { to: "/admin/AllProperties",   label: "All Properties",   emoji: "🏢" },
       { to: "/admin/sales",           label: "Sales",            emoji: "💰" },
       { to: "/admin/rentals",         label: "Rentals",          emoji: "🔑" },
+      { to: "/admin/applications", label: "Rental Applications", emoji: "📋" },
     ]},
     { group: "People", items: [
       { to: "/admin/agents",          label: "Agents",           emoji: "🤝" },

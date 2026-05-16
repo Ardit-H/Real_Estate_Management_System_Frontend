@@ -4,12 +4,12 @@ import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
 import "../../styles/admin/AdminAllAgents.css";
-import AgentsStats          from "../../components/admin/AgentsStats";
-import AgentsToolbar        from "../../components/admin/AgentsToolbar";
-import AgentsTable          from "../../components/admin/AgentsTable";
-import AgentViewModal       from "../../components/admin/AgentViewModal";
-import AgentImpersonateModal from "../../components/admin/AgentImpersonateModal";
-import { getFullName }      from "../../components/admin/agentsHelpers";
+import AgentsStats          from "../../components/admin/agents/AgentsStats";
+import AgentsToolbar        from "../../components/admin/agents/AgentsToolbar";
+import AgentsTable          from "../../components/admin/agents/AgentsTable";
+import AgentViewModal       from "../../components/admin/agents/AgentViewModal";
+import AgentImpersonateModal from "../../components/admin/agents/AgentImpersonateModal";
+import { getFullName }      from "../../components/admin/agents/agentsHelpers";
 
 export default function AdminAllAgents() {
   const { startImpersonation } = useContext(AuthContext);

@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+.ar-wrap * { box-sizing: border-box; }
+.ar-wrap { font-family: 'DM Sans', system-ui, sans-serif; }
+.ar-row:hover td { background: rgba(138,125,94,0.06) !important; }
+.ar-btn { transition: all 0.14s ease; }
+.ar-btn:hover { opacity: 0.82; transform: translateY(-1px); }
+.ar-pg:hover:not(:disabled) { background: rgba(201,184,122,0.1) !important; border-color: #c9b87a !important; color: #c9b87a !important; }
+
+@keyframes ar-spin  { to { transform: rotate(360deg); } }
+@keyframes ar-scale { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+@keyframes ar-toast { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes ar-pulse { 0%,100%{opacity:.35} 50%{opacity:.75} }

@@ -4,12 +4,12 @@ import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
 
 import "../../styles/admin/AdminAllClients.css";
-import ClientsStats           from "../../components/admin/ClientsStats";
-import ClientsToolbar         from "../../components/admin/ClientsToolbar";
-import ClientsTable           from "../../components/admin/ClientsTable";
-import ClientViewModal        from "../../components/admin/ClientViewModal";
-import ClientImpersonateModal from "../../components/admin/ClientImpersonateModal";
-import { getFullName }        from "../../components/admin/clientsHelpers";
+import ClientsStats           from "../../components/admin/clients/ClientsStats";
+import ClientsToolbar         from "../../components/admin/clients/ClientsToolbar";
+import ClientsTable           from "../../components/admin/clients/ClientsTable";
+import ClientViewModal        from "../../components/admin/clients/ClientViewModal";
+import ClientImpersonateModal from "../../components/admin/clients/ClientImpersonateModal";
+import { getFullName }        from "../../components/admin/clients/clientsHelpers";
 
 export default function AdminAllClients() {
   const { startImpersonation } = useContext(AuthContext);
