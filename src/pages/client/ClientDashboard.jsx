@@ -3,303 +3,16 @@ import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-const BASE_URL    = import.meta.env.VITE_API_URL || "http://localhost:8080";
-const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect fill='%23ede9df' width='400' height='300'/%3E%3Cpath d='M160 195 L200 135 L240 195Z' fill='%23d4cfc3'/%3E%3Crect x='180' y='165' width='40' height='30' fill='%23c4bfb0'/%3E%3C/svg%3E";
-
-const fmtPrice  = (v) => v != null ? `€${Number(v).toLocaleString("de-DE")}` : "—";
-const fmtDate   = (d) => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—";
-const buildImg  = (src) => src ? (src.startsWith("http")?src:BASE_URL+src) : null;
-const daysUntil = (d) => d ? Math.ceil((new Date(d)-new Date())/(1000*60*60*24)) : null;
-
-const isPaymentOverdue = (p) => {
-  if (p.status === "OVERDUE") return true;
-  if (p.status !== "PENDING") return false;
-  if (!p.due_date) return false;
-  const due   = new Date(p.due_date).toISOString().split("T")[0];
-  const today = new Date().toISOString().split("T")[0];
-  return due < today;
-};
-
-const TYPE_ICON  = { SELL:"🏷️", BUY:"🏠", RENT:"🔑", RENT_SEEKING:"🔎", VALUATION:"📊" };
-const TYPE_EMOJI = { APARTMENT:"🏢", HOUSE:"🏠", VILLA:"🏡", COMMERCIAL:"🏬", LAND:"🌿", OFFICE:"🏛️" };
-
-const LEAD_STATUS_CFG = {
-  NEW:         { dot:"#c9b87a", bg:"rgba(201,184,122,0.12)", border:"rgba(201,184,122,0.28)", color:"#9a7a30", label:"New"         },
-  IN_PROGRESS: { dot:"#a4b07e", bg:"rgba(164,176,126,0.12)", border:"rgba(164,176,126,0.28)", color:"#4a5a30", label:"In Progress" },
-  DONE:        { dot:"#7eb8a4", bg:"rgba(126,184,164,0.12)", border:"rgba(126,184,164,0.28)", color:"#2a6049", label:"Done"        },
-  REJECTED:    { dot:"#d4855a", bg:"rgba(212,133,90,0.12)",  border:"rgba(212,133,90,0.28)",  color:"#8b4513", label:"Rejected"    },
-};
-const CONTRACT_STATUS_CFG = {
-  ACTIVE:            { dot:"#7eb8a4", color:"#2a6049", bg:"rgba(126,184,164,0.12)", border:"rgba(126,184,164,0.28)" },
-  PENDING_SIGNATURE: { dot:"#c9b87a", color:"#9a7a30", bg:"rgba(201,184,122,0.12)", border:"rgba(201,184,122,0.28)" },
-  ENDED:             { dot:"#a0997e", color:"#6b6248", bg:"rgba(160,153,126,0.1)",  border:"rgba(160,153,126,0.22)" },
-  CANCELLED:         { dot:"#d4855a", color:"#8b4513", bg:"rgba(212,133,90,0.12)",  border:"rgba(212,133,90,0.28)"  },
-};
-const PAY_STATUS_CFG = {
-  PENDING:  { dot:"#c9b87a", color:"#9a7a30", bg:"rgba(201,184,122,0.1)",  border:"rgba(201,184,122,0.22)", label:"Pending"  },
-  PAID:     { dot:"#7eb8a4", color:"#2a6049", bg:"rgba(126,184,164,0.1)",  border:"rgba(126,184,164,0.22)", label:"Paid"     },
-  OVERDUE:  { dot:"#d4855a", color:"#8b4513", bg:"rgba(212,133,90,0.12)",  border:"rgba(212,133,90,0.28)",  label:"Overdue"  },
-  FAILED:   { dot:"#d4855a", color:"#8b4513", bg:"rgba(212,133,90,0.1)",   border:"rgba(212,133,90,0.22)",  label:"Failed"   },
-  REFUNDED: { dot:"#a0997e", color:"#6b6248", bg:"rgba(160,153,126,0.1)",  border:"rgba(160,153,126,0.22)", label:"Refunded" },
-};
-const STATUS_CFG_APP = {
-  PENDING:   { dot:"#c9b87a", bg:"rgba(201,184,122,0.12)", border:"rgba(201,184,122,0.28)", color:"#9a7a30", label:"Pending"   },
-  APPROVED:  { dot:"#7eb8a4", bg:"rgba(126,184,164,0.12)", border:"rgba(126,184,164,0.28)", color:"#2a6049", label:"Approved"  },
-  REJECTED:  { dot:"#d4855a", bg:"rgba(212,133,90,0.12)",  border:"rgba(212,133,90,0.28)",  color:"#8b4513", label:"Rejected"  },
-  CANCELLED: { dot:"#a0997e", bg:"rgba(160,153,126,0.1)",  border:"rgba(160,153,126,0.22)", color:"#6b6248", label:"Cancelled" },
-};
-
-// ─── CSS ──────────────────────────────────────────────────────────────────────
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .cd * { box-sizing: border-box; }
-  .cd { font-family: 'DM Sans', system-ui, sans-serif; background: #f2ede4; min-height: 100vh; }
-  .cd-stat { transition: transform 0.22s ease, box-shadow 0.22s ease; }
-  .cd-stat:hover { transform: translateY(-5px); box-shadow: 0 20px 44px rgba(20,16,10,0.13) !important; }
-  .cd-prop { transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.25s ease; cursor: pointer; }
-  .cd-prop:hover { transform: translateY(-6px); box-shadow: 0 28px 60px rgba(20,16,10,0.16) !important; }
-  .cd-prop:hover .cd-img { transform: scale(1.06); }
-  .cd-img { transition: transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94); }
-  .cd-btn { transition: all 0.17s ease; }
-  .cd-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-  .cd-item { transition: background 0.14s ease; }
-  .cd-item:hover { background: #faf7f2 !important; }
-  .cd-qa { transition: all 0.2s ease; cursor: pointer; }
-  .cd-qa:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(20,16,10,0.12) !important; }
-  @keyframes cd-spin    { to{transform:rotate(360deg)} }
-  @keyframes cd-toast   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes cd-shimmer { 0%{background-position:-800px 0} 100%{background-position:800px 0} }
-  @keyframes cd-fade-in { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes cd-glow    { 0%,100%{opacity:0.07} 50%{opacity:0.14} }
-  @keyframes cd-pulse   { 0%,100%{opacity:.38} 50%{opacity:.82} }
-`;
-
-// ─── Shared UI ────────────────────────────────────────────────────────────────
-function Toast({ msg, type="success", onDone }) {
-  useEffect(()=>{ const t=setTimeout(onDone,3000); return()=>clearTimeout(t); },[onDone]);
-  return (
-    <div style={{ position:"fixed", bottom:26, right:26, zIndex:9999, background:"#1a1714", color:type==="error"?"#f09090":"#90c8a8", padding:"11px 18px", borderRadius:12, fontSize:13, boxShadow:"0 10px 36px rgba(0,0,0,0.32)", border:`1px solid ${type==="error"?"rgba(240,128,128,0.15)":"rgba(144,200,168,0.15)"}`, maxWidth:320, fontFamily:"'DM Sans',sans-serif", animation:"cd-toast 0.2s ease", display:"flex", alignItems:"center", gap:8 }}>
-      <span>{type==="error"?"⚠️":"✅"}</span>{msg}
-    </div>
-  );
-}
-
-function Shimmer({ h=60, r=12, w="100%" }) {
-  return <div style={{ height:h, borderRadius:r, width:w, background:"linear-gradient(90deg,#ede9df 25%,#e4ddd0 50%,#ede9df 75%)", backgroundSize:"800px 100%", animation:"cd-shimmer 1.6s ease-in-out infinite" }}/>;
-}
-
-function Pill({ status, cfg }) {
-  const s = cfg[status] || { dot:"#a0997e", bg:"rgba(160,153,126,0.1)", border:"rgba(160,153,126,0.22)", color:"#6b6248", label:status };
-  return (
-    <span style={{ background:s.bg, color:s.color, border:`1.5px solid ${s.border||s.bg}`, padding:"3px 10px", borderRadius:999, fontSize:10.5, fontWeight:700, display:"inline-flex", alignItems:"center", gap:5, textTransform:"uppercase", letterSpacing:"0.3px", whiteSpace:"nowrap" }}>
-      <span style={{ width:5, height:5, borderRadius:"50%", background:s.dot, flexShrink:0 }}/>
-      {s.label||status}
-    </span>
-  );
-}
-
-function SectionHead({ title, sub, action, onAction }) {
-  return (
-    <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:16, gap:10 }}>
-      <div>
-        <h2 style={{ margin:"0 0 3px", fontFamily:"'Cormorant Garamond',Georgia,serif", fontSize:22, fontWeight:700, color:"#1a1714", letterSpacing:"-0.3px" }}>{title}</h2>
-        {sub && <p style={{ margin:0, fontSize:12, color:"#b0a890" }}>{sub}</p>}
-      </div>
-      {action && (
-        <button className="cd-btn" onClick={onAction}
-          style={{ background:"rgba(201,184,122,0.1)", border:"1px solid rgba(201,184,122,0.22)", color:"#c9b87a", padding:"6px 14px", borderRadius:9, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-          {action} →
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Ring({ pct, size=56, stroke=5, color="#c9b87a", children }) {
-  const r = (size-stroke*2)/2; const c = 2*Math.PI*r;
-  const dash = Math.max(0,Math.min(100,pct))/100*c;
-  return (
-    <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
-      <svg width={size} height={size} style={{ transform:"rotate(-90deg)" }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e8e2d6" strokeWidth={stroke}/>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={`${dash} ${c}`} strokeLinecap="round"
-          style={{ transition:"stroke-dasharray 1s ease" }}/>
-      </svg>
-      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function MiniBar({ data, color="#c9b87a" }) {
-  const max = Math.max(...data.map(d=>d.value),1);
-  return (
-    <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:36 }}>
-      {data.map((d,i) => (
-        <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-          <div style={{ width:"100%", background:color, borderRadius:"3px 3px 0 0", opacity:0.5+0.5*(d.value/max), height:`${(d.value/max)*32}px`, minHeight:d.value>0?4:1, transition:"height 0.6s ease" }}/>
-          {d.label && <span style={{ fontSize:8, color:"#b0a890", whiteSpace:"nowrap" }}>{d.label}</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, sub, color="#c9b87a", loading, onClick }) {
-  return (
-    <div className="cd-stat" onClick={onClick}
-      style={{ background:"#fff", borderRadius:14, border:"1.5px solid #ece6da", padding:"18px 20px", boxShadow:"0 2px 16px rgba(20,16,10,0.07)", cursor:onClick?"pointer":"default", animation:"cd-fade-in 0.4s ease both" }}>
-      <div style={{ width:40, height:40, borderRadius:11, background:`${color}18`, border:`1.5px solid ${color}30`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, marginBottom:12 }}>
-        {icon}
-      </div>
-      {loading ? <Shimmer h={26} r={6}/> : (
-        <div style={{ fontSize:28, fontWeight:700, color:"#1a1714", fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:"-0.5px", lineHeight:1 }}>
-          {value ?? "—"}
-        </div>
-      )}
-      <div style={{ marginTop:4, fontSize:11.5, color:"#b0a890", fontWeight:500 }}>{label}</div>
-      {sub && <div style={{ marginTop:3, fontSize:11, color:"#9a8c6e" }}>{sub}</div>}
-    </div>
-  );
-}
-
-function PropCard({ item, idx, onClick }) {
-  const img = buildImg(item.primary_image||item.primaryImage) || PLACEHOLDER;
-  const lt  = item.listing_type || item.listingType;
-  const badge = { SALE:{label:"For Sale",dot:"#e2c97e"}, RENT:{label:"For Rent",dot:"#7eb8a4"}, BOTH:{label:"Sale & Rent",dot:"#a4b07e"} }[lt] || {label:lt||"",dot:"#9a8c6e"};
-  return (
-    <div className="cd-prop" onClick={onClick}
-      style={{ background:"#fff", borderRadius:14, overflow:"hidden", border:"1.5px solid #ece6da", boxShadow:"0 2px 16px rgba(20,16,10,0.08)", animation:`cd-fade-in 0.4s ease ${idx*0.08}s both` }}>
-      <div style={{ position:"relative", height:140, overflow:"hidden", background:"#ede9df" }}>
-        <img src={img} alt={item.title} className="cd-img" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>{e.target.src=PLACEHOLDER;}}/>
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(8,6,4,0.55) 0%, transparent 55%)" }}/>
-        <span style={{ position:"absolute", top:8, left:8, background:"rgba(20,16,10,0.72)", backdropFilter:"blur(10px)", color:"#f5f0e8", fontSize:9.5, fontWeight:600, padding:"3px 10px", borderRadius:999, letterSpacing:"0.6px", textTransform:"uppercase", display:"flex", alignItems:"center", gap:4, border:`1px solid ${badge.dot}35` }}>
-          <span style={{ width:4, height:4, borderRadius:"50%", background:badge.dot }}/>
-          {badge.label}
-        </span>
-        <span style={{ position:"absolute", bottom:7, left:8, color:"rgba(245,240,232,0.7)", fontSize:10.5, display:"flex", alignItems:"center", gap:4 }}>
-          {TYPE_EMOJI[item.type]||"🏠"} {item.type}
-        </span>
-      </div>
-      <div style={{ padding:"12px 14px" }}>
-        <p style={{ margin:"0 0 3px", fontSize:13.5, fontWeight:700, color:"#1a1714", fontFamily:"'Cormorant Garamond',Georgia,serif", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</p>
-        {(item.city||item.country) && <p style={{ margin:"0 0 8px", fontSize:11, color:"#b0a890" }}>📍 {[item.city,item.country].filter(Boolean).join(", ")}</p>}
-        <div style={{ fontSize:17, fontWeight:700, color:"#1a1714", fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:"-0.3px", marginBottom:8 }}>{fmtPrice(item.price)}</div>
-        <div style={{ display:"flex", gap:10, color:"#9a8c6e", fontSize:11, paddingTop:8, borderTop:"1px solid #f0ece3" }}>
-          {item.bedrooms!=null && <span>🛏 {item.bedrooms}</span>}
-          {item.bathrooms!=null && <span>🚿 {item.bathrooms}</span>}
-          {(item.area_sqm||item.areaSqm) && <span>📐 {item.area_sqm||item.areaSqm}m²</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({ icon, label, desc, color, onClick }) {
-  return (
-    <div className="cd-qa" onClick={onClick}
-      style={{ background:"#fff", border:`1.5px solid ${color}22`, borderRadius:14, padding:"18px 16px", boxShadow:"0 2px 12px rgba(20,16,10,0.06)", textAlign:"center" }}>
-      <div style={{ width:48, height:48, borderRadius:14, background:`${color}14`, border:`1.5px solid ${color}28`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, margin:"0 auto 10px" }}>{icon}</div>
-      <p style={{ margin:"0 0 4px", fontSize:13.5, fontWeight:700, color:"#1a1714", fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{label}</p>
-      <p style={{ margin:0, fontSize:11.5, color:"#b0a890" }}>{desc}</p>
-    </div>
-  );
-}
-
-// ─── Profile Modal ────────────────────────────────────────────────────────────
-function ProfileModal({ user, profile, onClose, onSuccess, notify }) {
-  const [form, setForm] = useState({
-    first_name:        user?.first_name||"",
-    last_name:         user?.last_name||"",
-    email:             user?.email||"",
-    phone:             profile?.phone||"",
-    preferred_contact: profile?.preferred_contact||"EMAIL",
-    budget_min:        profile?.budget_min||"",
-    budget_max:        profile?.budget_max||"",
-    preferred_type:    profile?.preferred_type||"",
-    preferred_city:    profile?.preferred_city||"",
-  });
-  const [saving, setSaving] = useState(false);
-  const set = (k,v) => setForm(p=>({...p,[k]:v}));
-
-  useEffect(()=>{
-    const h=e=>e.key==="Escape"&&onClose();
-    window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h);
-  },[onClose]);
-  useEffect(()=>{ document.body.style.overflow="hidden"; return()=>{ document.body.style.overflow=""; }; },[]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await Promise.all([
-        api.put("/api/users/me",{ first_name:form.first_name, last_name:form.last_name, email:form.email }),
-        api.put("/api/users/clients/me",{
-          phone:             form.phone||null,
-          preferred_contact: form.preferred_contact||null,
-          budget_min:        form.budget_min?Number(form.budget_min):null,
-          budget_max:        form.budget_max?Number(form.budget_max):null,
-          preferred_type:    form.preferred_type||null,
-          preferred_city:    form.preferred_city||null,
-        }),
-      ]);
-      onSuccess();
-    } catch(err) { notify(err.response?.data?.message||"Error saving profile","error"); }
-    finally { setSaving(false); }
-  };
-
-  const INP = { width:"100%", padding:"10px 13px", border:"1.5px solid #e4ddd0", borderRadius:10, fontSize:13.5, color:"#1a1714", background:"#fff", fontFamily:"'DM Sans',sans-serif", outline:"none" };
-  const ML  = { display:"block", fontSize:10.5, fontWeight:600, color:"#9a8c6e", textTransform:"uppercase", letterSpacing:"0.7px", marginBottom:6, fontFamily:"'DM Sans',sans-serif" };
-  const R2  = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 };
-
-  return (
-    <div onClick={e=>e.target===e.currentTarget&&onClose()}
-      style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(8,6,4,0.84)", backdropFilter:"blur(14px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-      <div style={{ width:"100%", maxWidth:560, background:"#faf7f2", borderRadius:18, boxShadow:"0 44px 100px rgba(0,0,0,0.55)", maxHeight:"92vh", overflowY:"auto", animation:"cd-fade-in 0.26s ease" }}>
-        <div style={{ background:"linear-gradient(160deg,#141210 0%,#1e1a14 45%,#241e16 100%)", padding:"20px 26px", borderRadius:"18px 18px 0 0", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", overflow:"hidden" }}>
-          <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(rgba(255,255,255,0.018) 1px,transparent 1px)",backgroundSize:"22px 22px",pointerEvents:"none"}}/>
-          <div style={{position:"absolute",top:0,left:0,right:0,height:"2px",background:"linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)"}}/>
-          <p style={{ position:"relative", fontFamily:"'Cormorant Garamond',Georgia,serif", fontWeight:700, fontSize:19, margin:0, color:"#f5f0e8" }}>Edit Profile</p>
-          <button onClick={onClose} style={{ position:"relative", background:"rgba(245,240,232,0.08)", border:"1px solid rgba(245,240,232,0.12)", borderRadius:9, width:32, height:32, cursor:"pointer", color:"rgba(245,240,232,0.6)", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
-        </div>
-        <div style={{ padding:"22px 26px" }}>
-          <p style={{ fontSize:10.5, fontWeight:600, color:"#b0a890", textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:14 }}>Personal Info</p>
-          <div style={R2}>
-            <div><label style={ML}>First Name</label><input style={INP} value={form.first_name} onChange={e=>set("first_name",e.target.value)}/></div>
-            <div><label style={ML}>Last Name</label><input style={INP} value={form.last_name} onChange={e=>set("last_name",e.target.value)}/></div>
-          </div>
-          <div style={{ marginBottom:14 }}><label style={ML}>Email</label><input style={INP} type="email" value={form.email} onChange={e=>set("email",e.target.value)}/></div>
-          <p style={{ fontSize:10.5, fontWeight:600, color:"#b0a890", textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:14, marginTop:6, borderTop:"1px solid #e8e2d6", paddingTop:16 }}>Preferences</p>
-          <div style={R2}>
-            <div><label style={ML}>Phone</label><input style={INP} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="+383..."/></div>
-            <div><label style={ML}>Preferred Contact</label>
-              <select style={{ ...INP, cursor:"pointer" }} value={form.preferred_contact} onChange={e=>set("preferred_contact",e.target.value)}>
-                <option value="EMAIL">Email</option><option value="PHONE">Phone</option><option value="WHATSAPP">WhatsApp</option>
-              </select>
-            </div>
-          </div>
-          <div style={R2}>
-            <div><label style={ML}>Budget Min (€)</label><input style={INP} type="number" value={form.budget_min} onChange={e=>set("budget_min",e.target.value)} placeholder="50000"/></div>
-            <div><label style={ML}>Budget Max (€)</label><input style={INP} type="number" value={form.budget_max} onChange={e=>set("budget_max",e.target.value)} placeholder="200000"/></div>
-          </div>
-          <div style={R2}>
-            <div><label style={ML}>Preferred Type</label><input style={INP} value={form.preferred_type} onChange={e=>set("preferred_type",e.target.value)} placeholder="APARTMENT"/></div>
-            <div><label style={ML}>Preferred City</label><input style={INP} value={form.preferred_city} onChange={e=>set("preferred_city",e.target.value)} placeholder="Prishtinë"/></div>
-          </div>
-          <div style={{ display:"flex", gap:9, justifyContent:"flex-end", borderTop:"1px solid #e8e2d6", paddingTop:18, marginTop:6 }}>
-            <button onClick={onClose} className="cd-btn" style={{ padding:"10px 18px", borderRadius:10, border:"1.5px solid #e4ddd0", background:"transparent", color:"#6b6248", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="cd-btn" style={{ padding:"10px 22px", borderRadius:10, background:"linear-gradient(135deg,#c9b87a,#b0983e)", color:"#1a1714", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-              {saving ? "Saving…" : "✓ Save Changes"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { 
+  fmtPrice, fmtDate, isPaymentOverdue, TYPE_ICON, LEAD_STATUS_CFG, 
+  CONTRACT_STATUS_CFG, PAY_STATUS_CFG, STATUS_CFG_APP, daysUntil 
+} from "../../components/client/dashboard/dashboardConstants";
+import { CSS } from "../../components/client/dashboard/dashboardStyles";
+import { 
+  Toast, Shimmer, Pill, SectionHead, Ring, MiniBar, 
+  StatCard, PropCard, QuickAction 
+} from "../../components/client/dashboard/dashboardComponents";
+import ProfileModal from "../../components/client/dashboard/ProfileModal";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ClientDashboard() {
@@ -336,7 +49,7 @@ export default function ClientDashboard() {
         api.get("/api/users/clients/me"),                                                          // 0
         api.get("/api/properties/saved?page=0&size=6"),                                            // 1
         api.get("/api/leads/my/client?page=0&size=10"),                                            // 2
-        api.get(`/api/contracts/lease/client/${user.id}?page=0&size=10`),                         // 3 — saktë
+        api.get(`/api/contracts/lease/client/${user.id}?page=0&size=10`),                         // 3
         api.get("/api/rentals/applications/my?page=0&size=5"),                                     // 4
         api.get("/api/sales/applications/my?page=0&size=5"),                                       // 5
         api.get("/api/properties/filter?page=0&size=6&status=AVAILABLE&isFeatured=true"),          // 6
@@ -346,12 +59,10 @@ export default function ClientDashboard() {
       if (results[1].status==="fulfilled") setSavedProps(results[1].value.data?.content||[]);
       if (results[2].status==="fulfilled") setLeads(results[2].value.data?.content||[]);
 
-      // Contracts — merr content array
       if (results[3].status==="fulfilled") {
         const list = results[3].value.data?.content || results[3].value.data || [];
         setContracts(Array.isArray(list) ? list : []);
 
-        // Merr pagesat nga kontratat ACTIVE dhe PENDING_SIGNATURE
         const activeContracts = (Array.isArray(list)?list:[]).filter(c =>
           c.status === "ACTIVE" || c.status === "PENDING_SIGNATURE"
         );
@@ -375,25 +86,19 @@ export default function ClientDashboard() {
 
   useEffect(()=>{ loadAll(); },[loadAll]);
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  // ── Computed ──
   const activeContractsList = contracts.filter(c => c.status === "ACTIVE");
   const activeContractsCount = activeContractsList.length;
   const pendingLeads    = leads.filter(l => l.status==="NEW" || l.status==="IN_PROGRESS").length;
-
-  // Overdue: status=OVERDUE ose PENDING me due_date para sotit
   const overduePayments = payments.filter(p => isPaymentOverdue(p)).length;
   const pendingApps     = [...rentalApps,...saleApps].filter(a => a.status==="PENDING").length;
   const totalRent       = activeContractsList.reduce((s,c) => s + Number(c.rent||0), 0);
-
-  // Kontrata aktive e parë — për widget
   const activeContract  = activeContractsList[0] || null;
 
-  // Pagesa e radhës — PENDING ose OVERDUE, e sortuar sipas due_date
   const nextPayment = payments
     .filter(p => p.status === "PENDING" || p.status === "OVERDUE")
     .sort((a,b) => new Date(a.due_date||0) - new Date(b.due_date||0))[0] || null;
 
-  // Contract progress ring
   const contractPct = activeContract
     ? Math.max(0, Math.min(100, Math.round(
         ((new Date() - new Date(activeContract.start_date)) /
@@ -402,7 +107,6 @@ export default function ClientDashboard() {
     : 0;
   const days = activeContract ? daysUntil(activeContract.end_date) : null;
 
-  // Payment trend — 6 muajt e fundit
   const sparkPayments = (() => {
     const months = Array.from({length:6},(_,i)=>{
       const d = new Date(); d.setMonth(d.getMonth()-5+i);
@@ -417,7 +121,6 @@ export default function ClientDashboard() {
     return months;
   })();
 
-  // Activity feed
   const activities = [
     ...leads.slice(0,3).map(l=>({
       icon: TYPE_ICON[l.type]||"📋",
@@ -545,7 +248,6 @@ export default function ClientDashboard() {
                       ⚠️ Contract expires in <strong>{days} days</strong>
                     </div>
                   )}
-                  {/* Nëse ka më shumë kontrata */}
                   {activeContractsCount > 1 && (
                     <button className="cd-btn" onClick={()=>navigate("/client/mycontracts")}
                       style={{ marginTop:12, fontSize:11.5, color:"#8a7d5e", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", textDecoration:"underline" }}>
@@ -569,7 +271,6 @@ export default function ClientDashboard() {
               <p style={{ fontSize:10, fontWeight:700, color:"#b0a890", textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:12 }}>💳 Payment Overview</p>
               {loading ? (<><Shimmer h={20} r={6}/><div style={{marginTop:8}}/><Shimmer h={40} r={6}/></>) : (
                 <div>
-                  {/* Summary counts */}
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
                     {[
                       { label:"Total",   value:payments.length,                                  color:"#1a1714" },
@@ -583,7 +284,6 @@ export default function ClientDashboard() {
                     ))}
                   </div>
 
-                  {/* Next payment */}
                   {nextPayment ? (
                     <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, padding:"12px 14px", background:isPaymentOverdue(nextPayment)?"rgba(212,133,90,0.08)":"rgba(201,184,122,0.08)", borderRadius:10, border:`1.5px solid ${isPaymentOverdue(nextPayment)?"rgba(212,133,90,0.25)":"rgba(201,184,122,0.22)"}` }}>
                       <div>
@@ -603,7 +303,6 @@ export default function ClientDashboard() {
                     <p style={{ fontSize:13.5, fontFamily:"'Cormorant Garamond',Georgia,serif", color:"#8a7d5e", fontStyle:"italic", marginBottom:14 }}>No payments found</p>
                   )}
 
-                  {/* Spark chart */}
                   {sparkPayments.some(s=>s.value>0) && (
                     <div>
                       <p style={{ fontSize:10, color:"#b0a890", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.7px", marginBottom:8 }}>Payment Trend (6mo)</p>
@@ -624,7 +323,7 @@ export default function ClientDashboard() {
               <QuickAction icon="📋" label="Requests"  desc="Lead requests"    color="#a4b07e" onClick={()=>navigate("/client/leads")}/>
               <QuickAction icon="📄" label="Contracts" desc="Lease agreements" color="#7eb8a4" onClick={()=>navigate("/client/mycontracts")}/>
               <QuickAction icon="💳" label="Payments"  desc="Payment history"  color="#c9b87a" onClick={()=>navigate("/client/mypayments")}/>
-             </div>
+            </div>
           </div>
 
           {/* Featured Properties */}
