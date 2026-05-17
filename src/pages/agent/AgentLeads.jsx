@@ -3,347 +3,12 @@ import MainLayout from "../../components/layout/Layout";
 import { AuthContext } from "../../context/AuthProvider";
 import api from "../../api/axios";
  
-// ── Constants & helpers (identike me origjinalin) ─────────────────────────────
-const LEAD_STATUSES = ["NEW", "IN_PROGRESS", "DONE", "REJECTED"];
-const PROP_MARKER   = "__PROPERTY_DATA__:";
+import { LEAD_STATUSES, CSS, INP_S, SEL_S, BTN_PRI, BTN_SEC } from "../../components/agent/leads/leadsConstants.js";
+import { Toast, Loader, EmptyState, Pagination } from "../../components/agent/leads/LeadsUI.jsx";
+import { LeadRow } from "../../components/agent/leads/LeadRow.jsx";
+import { LeadDetailModal } from "../../components/agent/leads/LeadDetailModal.jsx";
+import { CompleteModal } from "../../components/agent/leads/CompleteModal.jsx";
  
-const TYPE_ICON   = { SELL:"🏷️", BUY:"🏠", RENT:"🔑", RENT_SEEKING:"🔎", VALUATION:"📊" };
-const SOURCE_ICON = { WEBSITE:"🌐", PHONE:"📞", EMAIL:"✉️", REFERRAL:"👥", SOCIAL:"📱" };
- 
-const fmtDate     = (d) => d ? new Date(d).toLocaleDateString("sq-AL") : "—";
-const fmtDateTime = (d) => d ? new Date(d).toLocaleString("sq-AL", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
- 
-function parsePropertyData(message) {
-  if (!message) return null;
-  const idx = message.indexOf(PROP_MARKER);
-  if (idx === -1) return null;
-  try { return JSON.parse(message.substring(idx + PROP_MARKER.length)); }
-  catch { return null; }
-}
- 
-function cleanMessage(message) {
-  if (!message) return "";
-  const idx = message.indexOf("\n--- Të dhënat e pronës ---");
-  if (idx !== -1) return message.substring(0, idx).trim();
-  const idx2 = message.indexOf(PROP_MARKER);
-  if (idx2 !== -1) return message.substring(0, message.lastIndexOf("\n", idx2)).trim();
-  return message;
-}
- 
-// ── CSS ───────────────────────────────────────────────────────────────────────
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .al * { box-sizing: border-box; }
-  .al { font-family: 'DM Sans', system-ui, sans-serif; background: #f2ede4; min-height: 100vh; }
-  .al-btn { transition: all 0.17s ease; }
-  .al-btn:hover:not(:disabled) { opacity: 0.86; transform: translateY(-1px); }
-  .al-in:focus { border-color: #8a7d5e !important; box-shadow: 0 0 0 3px rgba(138,125,94,0.13) !important; outline: none; }
-  @keyframes al-scale-in { from{opacity:0;transform:scale(0.95) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
-  @keyframes al-spin     { to{transform:rotate(360deg)} }
-  @keyframes al-toast    { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes al-glow     { 0%,100%{opacity:0.07} 50%{opacity:0.14} }
-`;
- 
-// Status config
-const STATUS_CFG = {
-  NEW:         { strip:"#c9b87a", pill:"rgba(201,184,122,0.10)", pillBorder:"rgba(201,184,122,0.25)", color:"#a8923e", label:"New"         },
-  IN_PROGRESS: { strip:"#7eb8a4", pill:"rgba(126,184,164,0.10)", pillBorder:"rgba(126,184,164,0.25)", color:"#2a6049", label:"In Progress" },
-  DONE:        { strip:"#a4b07e", pill:"rgba(164,176,126,0.10)", pillBorder:"rgba(164,176,126,0.25)", color:"#5a6a38", label:"Done"        },
-  REJECTED:    { strip:"#c07050", pill:"rgba(192,112,80,0.10)",  pillBorder:"rgba(192,112,80,0.25)",  color:"#8b4030", label:"Rejected"    },
-  DECLINED:    { strip:"#c07050", pill:"rgba(192,112,80,0.08)",  pillBorder:"rgba(192,112,80,0.20)",  color:"#8b4030", label:"Declined"    },
-};
- 
-// Shared style objects
-const INP_S = { width:"100%", padding:"10px 13px", border:"1.5px solid #e4ddd0", borderRadius:10, fontSize:13.5, color:"#1a1714", background:"#fff", fontFamily:"'DM Sans',sans-serif", boxSizing:"border-box", outline:"none", transition:"border-color 0.2s" };
-const SEL_S = { ...INP_S, cursor:"pointer" };
-const BTN_PRI = { padding:"10px 22px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#c9b87a,#b0983e)", color:"#1a1714", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" };
-const BTN_SEC = { padding:"10px 18px", borderRadius:10, border:"1.5px solid #e4ddd0", background:"transparent", color:"#6b6248", fontWeight:500, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" };
- 
-// ── StatusBadge ───────────────────────────────────────────────────────────────
-function StatusBadge({ status }) {
-  const s = STATUS_CFG[status] || { pill:"#f0ece3", pillBorder:"#e0d8c8", color:"#6b6248", label:status, strip:"#a0997e" };
-  return (
-    <span style={{ background:s.pill, color:s.color, border:`1.5px solid ${s.pillBorder}`, padding:"3px 11px", borderRadius:999, fontSize:10.5, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.3px", display:"inline-flex", alignItems:"center", gap:5 }}>
-      <span style={{ width:5, height:5, borderRadius:"50%", background:s.strip, display:"inline-block" }} />
-      {s.label}
-    </span>
-  );
-}
- 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-function Toast({ msg, type = "success", onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
-  return (
-    <div style={{ position:"fixed", bottom:26, right:26, zIndex:9999, background:"#1a1714", color:type==="error" ? "#f09090" : "#90c8a8", padding:"11px 18px", borderRadius:12, fontSize:13, boxShadow:"0 10px 36px rgba(0,0,0,0.32)", border:`1px solid ${type==="error" ? "rgba(240,128,128,0.15)" : "rgba(144,200,168,0.15)"}`, maxWidth:320, fontFamily:"'DM Sans',sans-serif", animation:"al-toast 0.2s ease", display:"flex", alignItems:"center", gap:8 }}>
-      <span style={{ fontSize:14 }}>{type === "error" ? "⚠️" : "✅"}</span>
-      {msg}
-    </div>
-  );
-}
- 
-// ── Loader ────────────────────────────────────────────────────────────────────
-function Loader() {
-  return (
-    <div style={{ textAlign:"center", padding:"60px 0" }}>
-      <div style={{ width:28, height:28, margin:"0 auto", border:"2px solid #e8e2d6", borderTop:"2px solid #c9b87a", borderRadius:"50%", animation:"al-spin 0.8s linear infinite" }} />
-    </div>
-  );
-}
- 
-// ── EmptyState ────────────────────────────────────────────────────────────────
-function EmptyState({ icon, text, subtext }) {
-  return (
-    <div style={{ textAlign:"center", padding:"60px 20px", color:"#b0a890", fontFamily:"'DM Sans',sans-serif" }}>
-      <div style={{ fontSize:40, marginBottom:12 }}>{icon}</div>
-      <p style={{ fontSize:15, fontWeight:500, color:"#6b6248", marginBottom:4, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{text}</p>
-      {subtext && <p style={{ fontSize:13, color:"#b0a890" }}>{subtext}</p>}
-    </div>
-  );
-}
- 
-// ── Pagination ────────────────────────────────────────────────────────────────
-function Pagination({ page, totalPages, onChange }) {
-  if (totalPages <= 1) return null;
-  return (
-    <div style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end", padding:"14px 16px" }}>
-      <button disabled={page === 0} onClick={() => onChange(page - 1)} style={{ ...BTN_SEC, padding:"6px 14px", fontSize:12.5, opacity:page===0 ? 0.4 : 1 }}>← Prev</button>
-      <span style={{ fontSize:13, color:"#9a8c6e", padding:"0 8px" }}>{page + 1} / {totalPages}</span>
-      <button disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)} style={{ ...BTN_SEC, padding:"6px 14px", fontSize:12.5, opacity:page>=totalPages-1 ? 0.4 : 1 }}>Next →</button>
-    </div>
-  );
-}
- 
-// ── Modal wrapper ─────────────────────────────────────────────────────────────
-function Modal({ title, onClose, children, wide = false }) {
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
-  }, [onClose]);
- 
-  return (
-    <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(8,6,4,0.84)", backdropFilter:"blur(14px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"'DM Sans',sans-serif" }}>
-      <div style={{ width:"100%", maxWidth:wide ? 640 : 520, background:"#faf7f2", borderRadius:18, boxShadow:"0 44px 100px rgba(0,0,0,0.55)", maxHeight:"92vh", overflowY:"auto", animation:"al-scale-in 0.26s ease" }}>
-        <div style={{ background:"linear-gradient(160deg,#141210 0%,#1e1a14 45%,#241e16 100%)", padding:"18px 24px", borderBottom:"1px solid rgba(201,184,122,0.14)", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", borderRadius:"18px 18px 0 0" }}>
-          <div style={{ position:"absolute", top:0, left:0, right:0, height:"2px", background:"linear-gradient(90deg,transparent,#c9b87a 30%,#c9b87a 70%,transparent)" }} />
-          <span style={{ fontFamily:"'Cormorant Garamond',Georgia,serif", fontWeight:700, fontSize:17, color:"#f5f0e8" }}>{title}</span>
-          <button onClick={onClose} style={{ background:"rgba(245,240,232,0.08)", border:"1px solid rgba(245,240,232,0.12)", borderRadius:8, width:30, height:30, cursor:"pointer", color:"rgba(245,240,232,0.6)", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
-        </div>
-        <div style={{ padding:"22px 24px" }}>{children}</div>
-      </div>
-    </div>
-  );
-}
- 
-// ── CompleteModal (logjika identike) ──────────────────────────────────────────
-function CompleteModal({ lead, onConfirm, onClose, loading }) {
-  const propertyData    = parsePropertyData(lead.message);
-  const hasPropertyData = !!propertyData && (lead.type === "SELL" || lead.type === "RENT");
-  const [createProperty, setCreateProperty] = useState(hasPropertyData);
- 
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
- 
-  return (
-    <Modal title={`✓ Konfirmo Complete — Lead #${lead.id}`} onClose={onClose}>
-      {hasPropertyData ? (
-        <>
-          <p style={{ fontSize:13.5, color:"#6b6248", marginBottom:14, lineHeight:1.6 }}>
-            Ky lead <strong style={{ color:"#1a1714" }}>{TYPE_ICON[lead.type]} {lead.type}</strong> ka të dhëna prone. Dëshironi t'i shtoni automatikisht si pronë të re në sistem?
-          </p>
-          <div style={{ background:"rgba(126,184,164,0.08)", border:"1.5px solid rgba(126,184,164,0.22)", borderRadius:10, padding:"12px 16px", marginBottom:16 }}>
-            <p style={{ fontSize:10, fontWeight:700, color:"#2a6049", textTransform:"uppercase", letterSpacing:"1px", marginBottom:8 }}>🏠 Prona që do të krijohet</p>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-              {propertyData.title         && <span style={{ fontSize:13, color:"#4a4438" }}>📌 {propertyData.title}</span>}
-              {propertyData.city          && <span style={{ fontSize:13, color:"#4a4438" }}>📍 {propertyData.city}</span>}
-              {propertyData.property_type && <span style={{ fontSize:13, color:"#4a4438" }}>🏗 {propertyData.property_type}</span>}
-              {propertyData.area_sqm      && <span style={{ fontSize:13, color:"#4a4438" }}>📐 {propertyData.area_sqm} m²</span>}
-              {propertyData.bedrooms      && <span style={{ fontSize:13, color:"#4a4438" }}>🛏 {propertyData.bedrooms} dhoma</span>}
-              {propertyData.price         && <span style={{ fontSize:13, color:"#1a1714", fontWeight:600 }}>💰 {Number(propertyData.price).toLocaleString("de-DE")} {propertyData.currency}</span>}
-              {propertyData.total_floors  && <span style={{ fontSize:13, color:"#4a4438" }}>🏢 {propertyData.total_floors} kate</span>}
-              {propertyData.price_per_sqm && <span style={{ fontSize:13, color:"#4a4438" }}>📊 €{Number(propertyData.price_per_sqm).toLocaleString("de-DE")}/m²</span>}
-            </div>
-          </div>
-          <div onClick={() => setCreateProperty((p) => !p)} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20, padding:"10px 14px", background:"#f8f5f0", borderRadius:9, cursor:"pointer", border:"1.5px solid #e8e2d6" }}>
-            <div style={{ width:20, height:20, borderRadius:5, background:createProperty ? "#2a6049" : "#e4ddd0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"background .15s" }}>
-              {createProperty && <span style={{ color:"white", fontSize:12 }}>✓</span>}
-            </div>
-            <span style={{ fontSize:13.5, color:"#4a4438" }}>Krijo pronën automatikisht në sistem pas Complete</span>
-          </div>
-        </>
-      ) : (
-        <p style={{ fontSize:13.5, color:"#6b6248", marginBottom:20, lineHeight:1.6 }}>
-          A jeni i sigurt që dëshironi ta markoni si <strong style={{ color:"#1a1714" }}>DONE</strong> lead-in #{lead.id}? Ky veprim është final dhe nuk mund të ndryshohet.
-        </p>
-      )}
-      <div style={{ display:"flex", gap:9, justifyContent:"flex-end" }}>
-        <button style={BTN_SEC} onClick={onClose} disabled={loading}>Anulo</button>
-        <button style={{ ...BTN_PRI, background:loading ? "#b0a890" : undefined }} disabled={loading} onClick={() => onConfirm(lead, createProperty && hasPropertyData, propertyData)}>
-          {loading ? "Duke procesuar..." : "✓ Complete"}
-        </button>
-      </div>
-    </Modal>
-  );
-}
- 
-// ── StatusActions (logjika identike) ──────────────────────────────────────────
-function StatusActions({ lead, onStatusChange, onDecline, onCompleteClick, loading, isMyLead }) {
-  const { status } = lead;
- 
-  if (status === "DONE" || status === "REJECTED") {
-    return <span style={{ fontSize:12, color:"#b0a890", fontStyle:"italic" }}>Final</span>;
-  }
- 
-  if (!isMyLead) {
-    if (status === "NEW" && !lead.assigned_agent_id) return <span style={{ fontSize:11.5, color:"#a8923e", background:"rgba(201,184,122,0.10)", padding:"3px 10px", borderRadius:999 }}>🕐 Pa asignuar</span>;
-    if (status === "NEW" && lead.assigned_agent_id)  return <span style={{ fontSize:11.5, color:"#a8923e", background:"rgba(201,184,122,0.10)", padding:"3px 10px", borderRadius:999 }}>⏳ Pret pranimin</span>;
-    return <span style={{ fontSize:11.5, color:"#b0a890", background:"#f0ece3", padding:"3px 10px", borderRadius:999, fontStyle:"italic" }}>Shiko vetëm</span>;
-  }
- 
-  if (status === "NEW") {
-    return (
-      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-        <button className="al-btn" onClick={() => onStatusChange(lead.id, "IN_PROGRESS")} disabled={loading} style={{ ...BTN_PRI, padding:"6px 14px", fontSize:12 }}>▶ Accept</button>
-        <button className="al-btn" onClick={() => onDecline(lead.id)} disabled={loading} style={{ padding:"6px 14px", borderRadius:9, border:"1.5px solid rgba(192,112,80,0.30)", background:"rgba(192,112,80,0.08)", color:"#8b4030", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>↩ Decline</button>
-      </div>
-    );
-  }
- 
-  if (status === "IN_PROGRESS") {
-    const hasPropertyData = !!parsePropertyData(lead.message) && (lead.type === "SELL" || lead.type === "RENT");
-    return (
-      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-        <button className="al-btn" onClick={() => onCompleteClick(lead)} disabled={loading}
-          style={{ padding:"6px 14px", borderRadius:9, border:`1.5px solid ${hasPropertyData ? "rgba(126,184,164,0.30)" : "rgba(164,176,126,0.30)"}`, background:hasPropertyData ? "rgba(126,184,164,0.10)" : "rgba(164,176,126,0.10)", color:hasPropertyData ? "#2a6049" : "#5a6a38", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}
-          title={hasPropertyData ? "Complete + Krijo pronën automatikisht" : "Marko si të kryer"}>
-          ✓ Complete{hasPropertyData ? " 🏠" : ""}
-        </button>
-        <button className="al-btn" onClick={() => onStatusChange(lead.id, "REJECTED")} disabled={loading} style={{ padding:"6px 14px", borderRadius:9, border:"1.5px solid rgba(192,112,80,0.30)", background:"rgba(192,112,80,0.08)", color:"#8b4030", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>✕ Reject</button>
-      </div>
-    );
-  }
- 
-  return null;
-}
- 
-// ── LeadDetailModal (logjika identike) ────────────────────────────────────────
-function LeadDetailModal({ lead, onClose, onStatusChange, onDecline, onCompleteClick, statusLoading, isMyLead }) {
-  const { user }     = useContext(AuthContext);
-  const propertyData = parsePropertyData(lead.message);
-  const s            = STATUS_CFG[lead.status] || STATUS_CFG.NEW;
- 
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
- 
-  return (
-    <Modal title={`Lead #${lead.id} — ${lead.type}`} onClose={onClose} wide>
-      {!isMyLead && (
-        <div style={{ background:"rgba(201,184,122,0.06)", border:"1.5px solid rgba(201,184,122,0.18)", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#a8923e", display:"flex", alignItems:"center", gap:8 }}>
-          ℹ️{" "}
-          {!lead.assigned_agent_id ? "Ky lead nuk i është asignuar ende asnjë agjenti." : lead.assigned_agent_id === user?.id ? "Ky lead ju është asignuar juve." : `Ky lead i është asignuar agjentit ${lead.agent_name || `#${lead.assigned_agent_id}`}.`}
-        </div>
-      )}
- 
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, padding:"12px 16px", background:s.pill, border:`1.5px solid ${s.pillBorder}`, borderRadius:11 }}>
-        <div>
-          <p style={{ fontSize:9.5, color:"#b0a890", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:5 }}>Statusi</p>
-          <StatusBadge status={lead.status} />
-        </div>
-        <StatusActions lead={lead} onStatusChange={onStatusChange} onDecline={onDecline} onCompleteClick={onCompleteClick} loading={statusLoading} isMyLead={isMyLead} />
-      </div>
- 
-      {propertyData && (lead.type === "SELL" || lead.type === "RENT") && (
-        <div style={{ background:lead.type==="SELL" ? "rgba(201,184,122,0.06)" : "rgba(126,184,164,0.06)", border:`1.5px solid ${lead.type==="SELL" ? "rgba(201,184,122,0.20)" : "rgba(126,184,164,0.20)"}`, borderRadius:11, padding:"14px 16px", marginBottom:16 }}>
-          <p style={{ fontSize:9.5, fontWeight:700, color:lead.type==="SELL" ? "#c9b87a" : "#7eb8a4", textTransform:"uppercase", letterSpacing:"0.8px", marginBottom:10 }}>
-            🏠 Të dhënat e pronës nga klienti
-            {lead.status === "IN_PROGRESS" && isMyLead && <span style={{ fontSize:10.5, fontWeight:400, color:"#b0a890", marginLeft:8 }}>— do të krijohet automatikisht pas Complete</span>}
-          </p>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
-            {propertyData.title         && <span style={{ fontSize:13, color:"#4a4438" }}>📌 {propertyData.title}</span>}
-            {propertyData.city          && <span style={{ fontSize:13, color:"#4a4438" }}>📍 {propertyData.city}</span>}
-            {propertyData.property_type && <span style={{ fontSize:13, color:"#4a4438" }}>🏗 {propertyData.property_type}</span>}
-            {propertyData.area_sqm      && <span style={{ fontSize:13, color:"#4a4438" }}>📐 {propertyData.area_sqm} m²</span>}
-            {propertyData.bedrooms      && <span style={{ fontSize:13, color:"#4a4438" }}>🛏 {propertyData.bedrooms} dhoma</span>}
-            {propertyData.bathrooms     && <span style={{ fontSize:13, color:"#4a4438" }}>🚿 {propertyData.bathrooms} banjo</span>}
-            {propertyData.floor         && <span style={{ fontSize:13, color:"#4a4438" }}>🏢 Kati {propertyData.floor}</span>}
-            {propertyData.year_built    && <span style={{ fontSize:13, color:"#4a4438" }}>🗓 Ndërtuar: {propertyData.year_built}</span>}
-            {propertyData.price         && <span style={{ fontSize:13, color:"#1a1714", fontWeight:600 }}>💰 {Number(propertyData.price).toLocaleString("de-DE")} {propertyData.currency}</span>}
-            {propertyData.total_floors  && <span style={{ fontSize:13, color:"#4a4438" }}>🏢 {propertyData.total_floors} kate gjithsej</span>}
-            {propertyData.price_per_sqm && <span style={{ fontSize:13, color:"#4a4438" }}>📊 €{Number(propertyData.price_per_sqm).toLocaleString("de-DE")}/m²</span>}
-          </div>
-          {propertyData.street      && <p style={{ fontSize:13, marginTop:8, color:"#6b6248" }}>📍 {propertyData.street}</p>}
-          {propertyData.description && <p style={{ fontSize:13, marginTop:8, color:"#6b6248", fontStyle:"italic", lineHeight:1.5, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>"{propertyData.description}"</p>}
-        </div>
-      )}
- 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:9, marginBottom:16 }}>
-        {[
-          { label:"Klienti",        value:lead.client_name || `#${lead.client_id}` },
-          { label:"Agjenti",        value:lead.agent_name || (lead.assigned_agent_id ? `#${lead.assigned_agent_id}` : "—") },
-          { label:"Tipi",           value:`${TYPE_ICON[lead.type] || ""} ${lead.type}` },
-          { label:"Burimi",         value:`${SOURCE_ICON[lead.source] || ""} ${lead.source}` },
-          { label:"Data preferuar", value:fmtDate(lead.preferred_date) },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ background:"#fff", borderRadius:10, padding:"10px 14px", border:"1.5px solid #e8e2d6" }}>
-            <p style={{ fontSize:9.5, color:"#b0a890", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.7px", marginBottom:4 }}>{label}</p>
-            <p style={{ fontSize:13.5, fontWeight:500, color:"#1a1714", margin:0, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{value}</p>
-          </div>
-        ))}
-      </div>
- 
-      {lead.message && cleanMessage(lead.message) && (
-        <div style={{ background:"#fff", border:"1.5px solid #e8e2d6", borderRadius:11, padding:"14px 16px" }}>
-          <p style={{ fontSize:9.5, color:"#b0a890", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.7px", marginBottom:8 }}>Mesazhi</p>
-          <p style={{ fontSize:14.5, color:"#3c3830", lineHeight:1.85, fontStyle:"italic", margin:0, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>"{cleanMessage(lead.message)}"</p>
-        </div>
-      )}
-    </Modal>
-  );
-}
- 
-// ── LeadRow (logjika identike) ─────────────────────────────────────────────────
-function LeadRow({ lead, onView, onStatusChange, onDecline, onCompleteClick, statusLoading, isMyLead }) {
-  return (
-    <tr style={{ borderBottom:"1px solid #f0ece3", transition:"background 0.12s" }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "#faf7f2"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}>
-      <td style={{ padding:"12px 16px", color:"#b0a890", fontSize:12 }}>{lead.id}</td>
-      <td style={{ padding:"12px 16px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <span style={{ fontSize:16 }}>{TYPE_ICON[lead.type] || "📋"}</span>
-          <span style={{ fontWeight:500, fontSize:13.5, color:"#1a1714" }}>{lead.type}</span>
-        </div>
-      </td>
-      <td style={{ padding:"12px 16px", fontWeight:500, fontSize:13, color:"#1a1714" }}>{lead.client_name || `#${lead.client_id}`}</td>
-      <td style={{ padding:"12px 16px", fontSize:12.5, color:"#9a8c6e" }}>{lead.property_title || (lead.property_id ? `#${lead.property_id}` : "—")}</td>
-      {!isMyLead && (
-        <td style={{ padding:"12px 16px" }}>
-          {lead.agent_name
-            ? <span style={{ fontWeight:500, fontSize:13, color:"#1a1714" }}>{lead.agent_name}</span>
-            : <span style={{ color:"#b0a890", fontSize:12, fontStyle:"italic" }}>Pa agjent</span>}
-        </td>
-      )}
-      <td style={{ padding:"12px 16px", fontSize:12.5, color:"#9a8c6e" }}>{SOURCE_ICON[lead.source]} {lead.source}</td>
-      <td style={{ padding:"12px 16px" }}><StatusBadge status={lead.status} /></td>
-      <td style={{ padding:"12px 16px", fontSize:12, color:"#b0a890" }}>{fmtDate(lead.created_at)}</td>
-      <td style={{ padding:"12px 16px" }}>
-        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-          <button className="al-btn" onClick={() => onView(lead)} style={{ padding:"5px 11px", borderRadius:9, border:"1.5px solid #e4ddd0", background:"transparent", color:"#6b6248", fontSize:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>View</button>
-          <StatusActions lead={lead} onStatusChange={onStatusChange} onDecline={onDecline} onCompleteClick={onCompleteClick} loading={statusLoading} isMyLead={isMyLead} />
-        </div>
-      </td>
-    </tr>
-  );
-}
- 
-// ══ MAIN PAGE ════════════════════════════════════════════════════════════════
 export default function AgentLeads() {
   const { user } = useContext(AuthContext);
  
@@ -374,7 +39,7 @@ export default function AgentLeads() {
       const data = res.data;
       if (data.content !== undefined) { setLeads(data.content || []); setTotalPages(data.totalPages || 0); }
       else { setLeads(Array.isArray(data) ? data : []); setTotalPages(1); }
-    } catch { notify("Gabim gjatë ngarkimit", "error"); }
+    } catch { notify("Error loading leads", "error"); }
     finally  { setLoading(false); }
   }, [activeTab, page, statusFilter, notify]);
  
@@ -392,13 +57,13 @@ export default function AgentLeads() {
   }, [leads, activeTab]);
  
   const fetchByProperty = async () => {
-    if (!propertyId) { notify("Shkruaj Property ID", "error"); return; }
+    if (!propertyId) { notify("Enter Property ID", "error"); return; }
     setLoading(true);
     try {
       const res = await api.get(`/api/leads/property/${propertyId}`);
       setLeads(Array.isArray(res.data) ? res.data : []);
       setTotalPages(1);
-    } catch { notify("Prona nuk u gjet", "error"); }
+    } catch { notify("Property not found", "error"); }
     finally { setLoading(false); }
   };
  
@@ -409,7 +74,7 @@ export default function AgentLeads() {
       notify(`Lead #${id} → ${newStatus}`);
       setLeads((prev) => prev.map((l) => l.id === id ? { ...l, status: newStatus } : l));
       if (selectedLead?.id === id) setSelectedLead((prev) => ({ ...prev, status: newStatus }));
-    } catch (err) { notify(err.response?.data?.message || "Gabim", "error"); }
+    } catch (err) { notify(err.response?.data?.message || "Error", "error"); }
     finally { setStatusLoading(false); }
   };
  
@@ -417,10 +82,10 @@ export default function AgentLeads() {
     setStatusLoading(true);
     try {
       await api.patch(`/api/leads/${id}/decline`);
-      notify(`Lead #${id} u kthye tek admini`);
+      notify(`Lead #${id} returned to admin`);
       setLeads((prev) => prev.filter((l) => l.id !== id));
       if (selectedLead?.id === id) setSelectedLead(null);
-    } catch (err) { notify(err.response?.data?.message || "Gabim gjatë decline", "error"); }
+    } catch (err) { notify(err.response?.data?.message || "Error during decline", "error"); }
     finally { setStatusLoading(false); }
   };
  
@@ -450,10 +115,10 @@ export default function AgentLeads() {
           const propRes       = await api.post("/api/properties", propPayload);
           const newPropertyId = propRes.data.id;
           await api.patch(`/api/leads/${lead.id}/property`, { property_id: newPropertyId });
-          notify(`✓ Lead #${lead.id} u mbyll + Prona "${propertyData.title}" (ID: #${newPropertyId}) u shtua dhe u lidh!`);
+          notify(`✓ Lead #${lead.id} closed + Property "${propertyData.title}" (ID: #${newPropertyId}) added and linked!`);
         } catch (propErr) {
           console.warn("Property creation/linking failed:", propErr);
-          notify(`Lead u mbyll por prona nuk u krijua: ${propErr.response?.data?.message || "gabim"}`, "error");
+          notify(`Lead closed but property was not created: ${propErr.response?.data?.message || "error"}`, "error");
         }
       }
  
@@ -463,7 +128,7 @@ export default function AgentLeads() {
       if (selectedLead?.id === lead.id) setSelectedLead((prev) => ({ ...prev, status: "DONE" }));
       setCompleteTarget(null);
     } catch (err) {
-      notify(err.response?.data?.message || "Gabim gjatë Complete", "error");
+      notify(err.response?.data?.message || "Error during Complete", "error");
     } finally {
       setStatusLoading(false);
     }
@@ -494,7 +159,7 @@ export default function AgentLeads() {
               Leads{" "}
               <span style={{ background:"linear-gradient(90deg,#c9b87a,#e8d9a0,#c9b87a)", backgroundSize:"200% auto", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>Management</span>
             </h1>
-            <p style={{ margin:"0 auto 20px", fontSize:13.5, color:"rgba(245,240,232,0.38)" }}>Menaxho kërkesat e klientëve dhe gjurmo progresin</p>
+            <p style={{ margin:"0 auto 20px", fontSize:13.5, color:"rgba(245,240,232,0.38)" }}>Manage client requests and track progress</p>
  
             {isMyLeadsTab && leads.length > 0 && (
               <div style={{ display:"flex", gap:8, maxWidth:440, margin:"0 auto", justifyContent:"center", flexWrap:"wrap" }}>
@@ -521,17 +186,17 @@ export default function AgentLeads() {
               <span style={{ color:"#9ab8b0" }}>→</span>
               <span style={{ color:"#2a6049", fontWeight:700 }}>✓ Complete</span>
               <span style={{ color:"#9ab8b0" }}>→</span>
-              <span style={{ color:"#4a7a6a", fontWeight:500 }}>DONE + prona krijohet</span>
+              <span style={{ color:"#4a7a6a", fontWeight:500 }}>DONE + property created</span>
               <span style={{ color:"#c8d8d0", margin:"0 4px" }}>|</span>
               <span style={{ color:"#8b4030", fontWeight:700 }}>↩ Decline</span>
-              <span style={{ color:"#9ab8b0" }}>→ tek admini</span>
+              <span style={{ color:"#9ab8b0" }}>→ to admin</span>
               <span style={{ color:"#c8d8d0", margin:"0 4px" }}>|</span>
               <span style={{ color:"#8b4030", fontWeight:700 }}>✕ Reject</span>
               <span style={{ color:"#9ab8b0" }}>→ REJECTED (final)</span>
             </>
           ) : (
             <span style={{ color:"#7a6a50" }}>
-              ℹ️ Leads <strong style={{ color:"#4a3a20" }}>NEW</strong> presin asignimin nga admini. Menaxho nga tab-i <strong style={{ color:"#4a3a20" }}>My Leads</strong>.
+              ℹ️ <strong style={{ color:"#4a3a20" }}>NEW</strong> leads are waiting for admin assignment. Manage from the <strong style={{ color:"#4a3a20" }}>My Leads</strong> tab.
             </span>
           )}
         </div>
@@ -583,8 +248,8 @@ export default function AgentLeads() {
             ) : leads.length === 0 ? (
               <EmptyState
                 icon={activeTab === "property" ? "🔍" : "📭"}
-                text={activeTab === "property" ? "Shkruaj Property ID dhe kliko Search" : "Nuk ka leads në këtë kategori"}
-                subtext={activeTab === "my" ? "Leads do të shfaqen kur admini t'i asignojë tek ju" : undefined}
+                text={activeTab === "property" ? "Enter Property ID and click Search" : "No leads in this category"}
+                subtext={activeTab === "my" ? "Leads will appear when the admin assigns them to you" : undefined}
               />
             ) : (
               <>
@@ -592,7 +257,7 @@ export default function AgentLeads() {
                   <table style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead>
                       <tr style={{ background:"#faf7f2" }}>
-                        {["#", "Tipi", "Klienti", "Prona", ...(!isMyLeadsTab ? ["Agjenti"] : []), "Burimi", "Statusi", "Krijuar", "Veprime"].map((h) => (
+                        {["#", "Type", "Client", "Property", ...(!isMyLeadsTab ? ["Agent"] : []), "Source", "Status", "Created", "Actions"].map((h) => (
                           <th key={h} style={{ textAlign:"left", fontSize:10.5, fontWeight:600, color:"#b0a890", textTransform:"uppercase", letterSpacing:"0.8px", padding:"10px 16px", borderBottom:"1.5px solid #e8e2d6", whiteSpace:"nowrap" }}>{h}</th>
                         ))}
                       </tr>
