@@ -23,8 +23,6 @@ export default function AgentDashboard() {
   const [propsLoading, setPropsLoading]           = useState(true);
   const [contracts, setContracts]                 = useState([]);
   const [contractsLoading, setContractsLoading]   = useState(true);
-  const [rentApps, setRentApps]                   = useState([]);
-  const [rentAppsLoading, setRentAppsLoading]     = useState(true);
   const [expiring, setExpiring]                   = useState([]);
   const [expiringLoading, setExpiringLoading]     = useState(true);
 
@@ -60,16 +58,6 @@ export default function AgentDashboard() {
       .then(r => setExpiring(Array.isArray(r.data) ? r.data : []))
       .catch(() => {}).finally(() => setExpiringLoading(false));
 
-    setRentAppsLoading(true);
-    api.get("/api/rentals/listings?page=0&size=1")
-      .then(async r => {
-        const listings = r.data.content || [];
-        if (listings.length > 0) {
-          const res = await api.get(`/api/rentals/applications/listing/${listings[0].id}`);
-          setRentApps((res.data || []).filter(a => a.status === "PENDING").slice(0, 5));
-        }
-      })
-      .catch(() => {}).finally(() => setRentAppsLoading(false));
 
   }, [user?.id]);
 
@@ -243,7 +231,7 @@ export default function AgentDashboard() {
           </div>
 
           {/* Second row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20, marginBottom: 20 }}>
 
             {/* Lease Contracts */}
             <div className="ad-card ad-section">
@@ -277,33 +265,7 @@ export default function AgentDashboard() {
             </div>
 
             {/* Pending Rental Applications */}
-            <div className="ad-card ad-section">
-              <SectionHeader title="Pending Rental Applications" count={rentApps.length} action="View →" onAction={() => navigate("/agent/rentals")} />
-              {rentAppsLoading ? <Skeleton rows={4} h={52} /> :
-               rentApps.length === 0 ? <EmptyRow icon="📝" text="No pending applications" /> : (
-                <div>
-                  {rentApps.map((app, i) => (
-                    <div key={app.id} className="ad-row" style={{
-                      padding: "12px 18px",
-                      borderBottom: i < rentApps.length - 1 ? `1px solid ${C.border}` : "none",
-                      display: "flex", alignItems: "center", gap: 12, transition: "background 0.15s",
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: C.text }}>
-                          Application #{app.id}
-                          <span style={{ fontWeight: 400, color: C.muted }}> · Client #{app.client_id}</span>
-                        </p>
-                        <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textMut }}>
-                          Listing #{app.listing_id} · {fmtRelative(app.created_at)}
-                          {app.income && ` · €${Number(app.income).toLocaleString()}/month`}
-                        </p>
-                      </div>
-                      <StatusPill label={app.status} config={APP_STATUS[app.status]} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            
           </div>
 
           {/* Expiring contracts alert */}
