@@ -66,6 +66,8 @@ const NAV_CONFIG = {
       { to: "/client/myapplications",   label: "My Requests",    emoji: "📋" },
       { to: "/client/mycontracts",      label: "My Contracts",       emoji: "📄" },
       { to: "/client/mypayments",       label: "My Payments",        emoji: "💳" },
+      { to: "/client/mysalecontracts", label: "My Purchases",     emoji: "🏠" },
+      { to: "/client/mysalepayments",  label: "Purchase Payments", emoji: "💰" },
     ]},
     { group: "Support", items: [
       { to: "/client/maintenance",      label: "Maintenance",        emoji: "🔧" },
