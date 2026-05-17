@@ -43,6 +43,8 @@ import AdminAgentAnalysis from "../pages/admin/AdminAgentAnalysis";
 import AdminAllAgents from "../pages/admin/AdminAllAgents";
 import AdminAllClients from "../pages/admin/AdminAllClients";
 import AgentsList from "../pages/client/AgentsList";
+import MySaleContracts from "../pages/client/MySaleContracts";
+import MySalePayments  from "../pages/client/MySalePayments";
 
 export default function AppRoutes() {
     return (
@@ -57,6 +59,8 @@ export default function AppRoutes() {
     <Route path="/client/browseproperties" element={<ClientPropeties />} />
     <Route path="/client/mycontracts" element={<ClientContrats/>}/>
     <Route path="/client/mypayments" element={<ClientPayments/>}/>
+    <Route path="/client/mysalecontracts" element={<MySaleContracts/>}/>
+    <Route path="/client/mysalepayments" element={<MySalePayments/>}/>
     <Route path="/client/myapplications" element={<ClientLeads/>}/>
     <Route path="/client/savedproperties" element={<SavedProperties/>}/>
     <Route path="/client/profile" element={<ClientProfile/>}/>
